@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.schemas import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse, MessageResponse
+from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse, MessageResponse
 from app.database import get_db
 import logging
 
@@ -20,21 +21,21 @@ def project_not_found(project_id: int):
      )
 
 #get all projects
-@router.get("")
+@router.get(
+     "",
+     response_model=list[ProjectResponse]
+     )
 def get_projects(
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
      ):
 
-        result = connection.execute(
+        result = db.execute(
             text("SELECT TOP 10 * FROM Project")
         )
 
-        projects = []
-
-        for row in result:
-            projects.append(dict(row._mapping))
-
-        return projects
+        return [
+             row._mapping for row in result
+        ]
    
    
 #get one project with project_id
@@ -44,10 +45,10 @@ def get_projects(
      )
 def get_project(
      project_id: int,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
      ):
      
-        result = connection.execute(
+        result = db.execute(
             text("""
                 SELECT *
                 FROM Project
@@ -77,10 +78,10 @@ def get_project(
      )
 def get_project_dashboard(
      project_id: int,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
      ):
      
-     result = connection.execute(
+     result = db.execute(
           text("""
                SELECT * FROM vw_ProjectDashboardAdvanced vpda
                WHERE vpda.ProjectId = :project_id;
@@ -107,10 +108,10 @@ def get_project_dashboard(
      )
 def get_project_bottleneck(
      project_id: int,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
      ):
      
-     result = connection.execute(
+     result = db.execute(
           text("""
                SELECT * FROM vw_ProjectBottlenecks vpb
                WHERE vpb.ProjectId = :project_id;
@@ -128,7 +129,7 @@ def get_project_bottleneck(
      )
 
 
-#first post
+#create project
 @router.post(
      "",
      response_model=MessageResponse,
@@ -136,10 +137,10 @@ def get_project_bottleneck(
      )
 def create_project(
      project: ProjectCreate,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
 ):
      try:
-          connection.execute(
+          db.execute(
                text("""
                     INSERT INTO Project
                     (
@@ -188,10 +189,10 @@ def create_project(
      )
 def delete_project(
      project_id: int,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
 ):
      try:
-          result = connection.execute(
+          result = db.execute(
                text("""
                     DELETE FROM Project WHERE ProjectId = :project_id;     
                """),
@@ -223,10 +224,10 @@ def delete_project(
 def update_project_status(
      project_id: int,
      status_update: ProjectStatusUpdate,
-     connection = Depends(get_db)
+     db: Session = Depends(get_db)
 ):
      try:
-          connection.execute(
+          db.execute(
                text("""
                     EXEC sp_UpdateProjectStatus
                     @ProjectId = :project_id,
