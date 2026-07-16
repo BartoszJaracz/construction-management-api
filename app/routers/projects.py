@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse, MessageResponse
 from app.database import get_db
+from app.schemas.exceptions import project_not_found
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,12 +14,7 @@ router = APIRouter(
      tags=["Projects"]
 )
 
-#httpException
-def project_not_found(project_id: int):
-     raise HTTPException(
-          status_code=status.HTTP_404_NOT_FOUND,
-          detail=f"Project with ID {project_id} not found"
-     )
+
 
 #get all projects
 @router.get(
@@ -30,11 +26,11 @@ def get_projects(
      ):
 
         result = db.execute(
-            text("SELECT TOP 10 * FROM Project")
+            text("SELECT * FROM Project")
         )
 
         return [
-             row._mapping for row in result
+             row._mapping for row in result.all()
         ]
    
    
@@ -185,7 +181,7 @@ def create_project(
 #delete project
 @router.delete(
      "/{project_id}",
-     status_code=status.HTTP_200_OK
+     status_code=status.HTTP_204_NO_CONTENT
      )
 def delete_project(
      project_id: int,
@@ -219,7 +215,7 @@ def delete_project(
 @router.put(
      "/{project_id}/status",
      response_model=MessageResponse,
-     status_code=status.HTTP_202_ACCEPTED
+     status_code=status.HTTP_201_CREATED
      )
 def update_project_status(
      project_id: int,

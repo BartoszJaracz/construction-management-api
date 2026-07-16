@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.schemas.element import ElementResponse, ElementMessageResponse, ElementCreate, ElementWithoutCalculationsResponse
+from app.schemas.calculation import CalculationResponse
+from app.schemas.exceptions import element_not_found
 import logging
 
 logger = logging.getLogger(__name__)
@@ -16,7 +18,8 @@ router = APIRouter(
 #get top 5 elements
 @router.get(
      "",
-     response_model=list[ElementResponse]
+     response_model=list[ElementResponse],
+     status_code=status.HTTP_200_OK
 )
 def get_top5_elements(
      db: Session = Depends(get_db)
@@ -27,13 +30,32 @@ def get_top5_elements(
      )
      
      return [
-          row._mapping for row in result
+          row._mapping for row in result.all()
      ]
      
+#get elements without calculations
+@router.get(
+     "/without-calcs",
+     response_model=list[ElementWithoutCalculationsResponse],
+     status_code=status.HTTP_200_OK
+)
+def get_elem_without_calcs(
+     db: Session = Depends(get_db)
+):
+     
+     result = db.execute(
+          text("""SELECT * FROM vw_ElementsWithoutCalculations vewc;""")
+     )
+     
+     return [
+          row._mapping for row in result.all()
+     ]
+          
 #get element with ElementId
 @router.get(
      "/{element_id}",
-     response_model=ElementResponse
+     response_model=ElementResponse,
+     status_code=status.HTTP_200_OK
 )
 def get_element(
      element_id: int,
@@ -51,18 +73,46 @@ def get_element(
      row = result.fetchone()
      
      if row is None:
-          return {"message": "Project not found"}
+          element_not_found(element_id) 
      
      return ElementResponse(
           **row._mapping
      )
+
+#get LATEST calculations with ElementId
+@router.get(
+     "/{element_id}/calculations/latest",
+     status_code=status.HTTP_200_OK,
+     response_model=CalculationResponse
+)
+def get_latest_calculation(
+     element_id: int,
+     db: Session= Depends(get_db)
+):
+     result = db.execute(
+          text("""
+               SELECT * FROM vw_LatestCalculationsPerElement vlcpe
+               WHERE vlcpe.ElementId = :element_id AND vlcpe.isLatest = 1;    
+          """),
+          {"element_id": element_id}
+     )
      
+     row = result.fetchone()
+     
+     if row is None:
+          element_not_found(element_id)
+     
+     return CalculationResponse(
+          **row._mapping
+     )
+
 #create new element
 @router.post(
      "",
-     response_model=ElementMessageResponse
+     response_model=ElementMessageResponse,
+     status_code=status.HTTP_201_CREATED
 )
-def post_element(
+def create_element(
      element: ElementCreate,
      db: Session = Depends(get_db)
 ):
@@ -90,28 +140,11 @@ def post_element(
      return ElementMessageResponse(
           message="Element created successfully"
      )
-     
-#get elements without calculations
-@router.get(
-     "",
-     response_model=ElementWithoutCalculationsResponse
-)
-def get_elem_without_calcs(
-     db: Session = Depends(get_db)
-):
-     
-     result = db.execute(
-          text("""SELECT * FROM vw_ElementsWithoutCalculations vewc;""")
-     )
-     
-     return ElementWithoutCalculationsResponse(
-          **row._mapping
-     )
-     
+        
 #delete element
 @router.delete(
      "/{element_id}",
-     status_code=status.HTTP_200_OK
+     status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_element(
      element_id: int,
@@ -120,7 +153,8 @@ def delete_element(
      try:
           result = db.execute(
                text("""
-                    DELETE FROM StructuralElement WHERE ElementId = :element_id;
+                    DELETE FROM StructuralElement
+                    WHERE ElementId = :element_id;
                """),
                {"element_id": element_id}
           )
@@ -134,7 +168,44 @@ def delete_element(
           )
      
      if result.rowcount == 0:
-          raise HTTPException(
-               status_code=status.HTTP_404_NOT_FOUND,
-               detail=f"Element with ID {element_id} not found"
+          element_not_found(element_id)
+          
+     
+#update element dimensions
+@router.put(
+     "/dimensions/{element_id}",
+     response_model=ElementMessageResponse,
+     status_code=status.HTTP_201_CREATED
+)
+def update_element_dimensions(
+     element_id: int,
+     new_dimensions: str,
+     db: Session = Depends(get_db)
+):
+     try:
+          result = db.execute(
+               text("""
+                    UPDATE StructuralElement
+                    SET Dimensions = :new_dimensions
+                    WHERE ElementId = :element_id
+               """),
+               {
+                    "element_id": element_id,
+                    "new_dimensions": new_dimensions
+               }
           )
+          
+          if result.rowcount == 0:
+               element_not_found(element_id)
+               
+     except Exception as e:
+          logger.exception("Database error")
+          
+          raise HTTPException(
+               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+               detail=f"Cannot update element with ID {element_id}"
+          )
+     
+     return ElementMessageResponse(
+          message=f"Element with ID {element_id} set new element dimensions: {new_dimensions}"
+     )
