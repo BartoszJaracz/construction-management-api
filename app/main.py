@@ -4,6 +4,7 @@ from app.routers.elements import router as elements_router
 from app.routers.calculations import router as calculations_router
 from app.routers.materials import router as materials_router
 from app.routers.users import router as users_router
+from app.routers.auth import router as auth_router
 
 app = FastAPI()
 
@@ -12,3 +13,4 @@ app.include_router(elements_router)
 app.include_router(calculations_router)
 app.include_router(materials_router)
 app.include_router(users_router)
+app.include_router(auth_router)
