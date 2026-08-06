@@ -84,9 +84,11 @@ def create_calculation(
                calculation.model_dump()
           )
           
-     except Exception as e:
-          logger.exception("Database error")
+          db.commit()
           
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail="Cannot create new calculation"
@@ -102,7 +104,7 @@ def create_calculation(
      status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_calculation(
-     calculation_id = int,
+     calculation_id: int,
      db: Session= Depends(get_db)
 ):
      try:
@@ -114,16 +116,21 @@ def delete_calculation(
                {"calculation_id": calculation_id}
           )
           
-     except Exception as e:
-          logger.exception("Database error")
+          if result.rowcount == 0:
+               db.rollback()
+               calculation_not_found(calculation_id)
           
+          db.commit()
+          
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete calculation with ID {calculation_id}"
           )
      
-     if result.rowcount == 0:
-          calculation_not_found(calculation_id)
+     
           
 #update bending moment
 @router.put(
@@ -150,11 +157,14 @@ def update_bending_moment(
           )
           
           if result.rowcount == 0:
+               db.rollback()
                calculation_not_found(calculation_id)
-     
-     except Exception as e:
-          logger.exception("Database error")
           
+          db.commit()     
+          
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           return calculation_update_exception(calculation_id)
           
      return CalculationMessageResponse(
@@ -186,11 +196,14 @@ def update_axial_force(
           )
           
           if result.rowcount == 0:
+               db.rollback()
                calculation_not_found(calculation_id)
-     
-     except Exception as e:
-          logger.exception("Database error")
+               
+          db.commit()
           
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           return calculation_update_exception(calculation_id)
           
      return CalculationMessageResponse(
@@ -222,11 +235,14 @@ def update_load_value(
           )
           
           if result.rowcount == 0:
+               db.rollback()
                calculation_not_found(calculation_id)
+               
+          db.commit()
      
      except Exception as e:
+          db.rollback()
           logger.exception("Database error")
-          
           return calculation_update_exception(calculation_id)
           
      return CalculationMessageResponse(
@@ -258,11 +274,14 @@ def update_load_capacity_factor(
           )
           
           if result.rowcount == 0:
+               db.rollback()
                calculation_not_found(calculation_id)
-     
-     except Exception as e:
-          logger.exception("Database error")
+               
+          db.commit()
           
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           return calculation_update_exception(calculation_id)
           
      return CalculationMessageResponse(

@@ -77,17 +77,19 @@ def assign_user_to_project(
                }
           )
           
+          if result.rowcount == 0:
+               db.rollback()
+               user_not_found(user_id)
+               
+          db.commit()
+          
      except Exception as e:
-          
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot assign user with id {user_id} to project with id {project_id}"
           )
-     
-     if result.rowcount == 0:
-          user_not_found(user_id)
           
      return UserMessageResponse(
           message=f"User with id {user_id} successfully assigned to project with id {project_id}"
@@ -159,3 +161,4 @@ def register(
      return UserMessageResponse(
           message=f"User with email: {user_data.email} registered successfully."
      )
+     

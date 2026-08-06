@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse, MessageResponse
 from app.database import get_db
 from app.schemas.exceptions import project_not_found
+from app.dependencies import require_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -160,11 +161,14 @@ def create_project(
                project.model_dump()
           )
           # connection.commit()
+          
+          db.commit()
      
      except Exception as e:
           #rollback if error
           # connection.rollback()
           #print rollback message
+          db.rollback()
           logger.exception("Database error")
           #raise error http
           raise HTTPException(
@@ -185,6 +189,7 @@ def create_project(
      )
 def delete_project(
      project_id: int,
+     current_user = Depends(require_admin),
      db: Session = Depends(get_db)
 ):
      try:
@@ -195,10 +200,15 @@ def delete_project(
                {"project_id": project_id},
           )
           
+          if result.rowcount == 0:
+               db.rollback()
+               project_not_found(project_id)
+               
+          db.commit()
+          
      except Exception as e:
-          
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException (
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete Project with ID {project_id}"
@@ -207,9 +217,6 @@ def delete_project(
      # return {
      #      "message": f"Project with ID {project_id} deleted successfully"
      # }
-     
-     if result.rowcount == 0:
-          project_not_found(project_id)
      
 #update project status
 @router.put(
@@ -235,10 +242,11 @@ def update_project_status(
                }
           )
           
+          db.commit()
+          
      except Exception as e:
-          
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException (
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot update project with ID {project_id}"

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
@@ -13,6 +14,8 @@ router = APIRouter(
      tags=["Authentication"]
 )
 
+
+
 #user login
 @router.post(
      "/login",
@@ -20,31 +23,33 @@ router = APIRouter(
      status_code=status.HTTP_200_OK
 )
 def user_login(
-     payload: UserLogin,
+     form_data: OAuth2PasswordRequestForm = Depends(),
      db: Session= Depends(get_db)
 ):
-
+     #login exception
+     login_exception = HTTPException(
+               status_code=status.HTTP_401_UNAUTHORIZED,
+               detail="Invalid email or password"
+          )
+       
      result = db.execute(
           text("""
                SELECT u.UserId, u.PasswordHash FROM [User] u
                WHERE u.Email = :email;
           """),
-          {"email": payload.email}
+          {"email": form_data.username}
      )
           
      user = result.fetchone()
           
-     if user is None:
-          raise HTTPException(
-               status_code=status.HTTP_401_UNAUTHORIZED,
-               detail="Invalid email or password"
-          )
-               
-     if not verify_password(payload.password, user.PasswordHash):
-          raise HTTPException(
-               status_code=status.HTTP_401_UNAUTHORIZED,
-               detail="Invalid email or password"
-          )
+     if not user:
+          raise login_exception
+     
+     print(user.PasswordHash)
+     print(type(user.PasswordHash))   
+       
+     if not verify_password(form_data.password, user.PasswordHash):
+          raise login_exception
           
      try:               
           db.execute(

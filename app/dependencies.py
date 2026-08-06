@@ -58,3 +58,15 @@ def get_current_user(
           raise login_exception
      
      return user
+
+
+def require_admin(
+     current_user = Depends(get_current_user)
+):
+     if current_user.Role != "ADMIN":
+          raise HTTPException(
+               status_code=status.HTTP_403_FORBIDDEN,
+               detail="Insufficient permissions"
+          )
+          
+     return current_user

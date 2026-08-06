@@ -102,9 +102,11 @@ def add_material_usage(
                query_params
           )
           
-     except Exception as e:
-          logger.exception("Database error")
+          db.commit()
           
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail="Cannot add material usage"
@@ -136,15 +138,20 @@ def delete_material_usage(
                     "quantity": quantity
                }
           )
+          
+          if result.rowcount == 0:
+               db.rollback()
+               element_not_found(element_id)
+          
+          db.commit()
+          
      except Exception as e:
+          db.rollback()
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete MaterialUsage with ElementId {element_id} and Quantity {quantity}"
-          )
-          
-     if result.rowcount == 0:
-          element_not_found(element_id)          
+          )          
 
 #update MaterialUsage by ElementId & Quantity
 @router.put(
@@ -174,11 +181,14 @@ def update_material_usage_quantity(
           )
           
           if result.rowcount==0:
+               db.rollback()
                material_usage_not_found(element_id, quantity)
+               
+          db.commit()
           
      except Exception as e:
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot update material usage quantity with ElementId {element_id}"

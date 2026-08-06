@@ -129,9 +129,11 @@ def create_element(
                element.model_dump()
           )
           
-     except Exception as e:
-          logger.exception("Database error")
+          db.commit()
           
+     except Exception as e:
+          db.rollback()
+          logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail="Cannot create new element"
@@ -158,17 +160,20 @@ def delete_element(
                """),
                {"element_id": element_id}
           )
+          
+          if result.rowcount == 0:
+               db.rollback()
+               element_not_found(element_id)
+               
+          db.commit()
      
      except Exception as e:
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail= f"Cannot delete Element with ID {element_id}"
           )
-     
-     if result.rowcount == 0:
-          element_not_found(element_id)
           
      
 #update element dimensions
@@ -196,11 +201,14 @@ def update_element_dimensions(
           )
           
           if result.rowcount == 0:
+               db.rollback()
                element_not_found(element_id)
                
+          db.commit()
+               
      except Exception as e:
+          db.rollback()
           logger.exception("Database error")
-          
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot update element with ID {element_id}"

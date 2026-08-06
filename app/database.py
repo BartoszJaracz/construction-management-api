@@ -21,5 +21,10 @@ SessionLocal = sessionmaker(
 
 #connection generator
 def get_db():
-    with engine.begin() as connection:
-        yield connection
+    db = SessionLocal()
+    
+    try:
+        yield db
+        
+    finally:
+        db.close()
