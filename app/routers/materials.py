@@ -3,8 +3,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DBAPIError
 from app.database import get_db
-from app.schemas.material import MaterialResponse, MaterialUsageResponse, TopMaterialPerProjectResponse, MaterialUsageAdd, MaterialMessageResponse
+from app.schemas.material import MaterialResponse, MaterialUsageResponse, TopMaterialPerProjectResponse, MaterialUsageAdd
 from app.schemas.exceptions import material_not_found, project_not_found, element_not_found, material_usage_not_found
+from app.schemas.common import MessageResponse
 from decimal import Decimal
 import logging
 
@@ -64,7 +65,7 @@ def get_material_usage_with_material_id(
 @router.post(
      "/usage/{element_id}/{material_id}",
      status_code=status.HTTP_201_CREATED,
-     response_model=MaterialMessageResponse
+     response_model=MessageResponse
 )
 def add_material_usage(
      element_id: int,
@@ -104,7 +105,7 @@ def add_material_usage(
           
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
@@ -112,7 +113,7 @@ def add_material_usage(
                detail="Cannot add material usage"
           )
           
-     return MaterialMessageResponse(
+     return MessageResponse(
           message="Material usage added successfully"
      )
 
@@ -139,25 +140,24 @@ def delete_material_usage(
                }
           )
           
-          if result.rowcount == 0:
-               db.rollback()
-               element_not_found(element_id)
-          
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete MaterialUsage with ElementId {element_id} and Quantity {quantity}"
-          )          
+          )    
+          
+     if result.rowcount == 0:
+          element_not_found(element_id)      
 
 #update MaterialUsage by ElementId & Quantity
 @router.put(
      "/usage/{element_id}/{quantity}/{new_quantity}",
-     response_model= MaterialMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model= MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_material_usage_quantity(
      element_id: int,
@@ -180,27 +180,26 @@ def update_material_usage_quantity(
                }
           )
           
-          if result.rowcount==0:
-               db.rollback()
-               material_usage_not_found(element_id, quantity)
-               
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot update material usage quantity with ElementId {element_id}"
           )
+          
+     if result.rowcount==0:
+          material_usage_not_found(element_id, quantity)
 
-     return MaterialMessageResponse(
+     return MessageResponse(
           message=f"Quantity {new_quantity} set to element with ID {element_id}"
      )
 
 #get top material per project
 @router.get(
-     "/{project_id}/{top_n}",
+     "/top/{project_id}/{top_n}",
      status_code=status.HTTP_200_OK,
      response_model=list[TopMaterialPerProjectResponse]
 )
@@ -233,4 +232,8 @@ def get_top_material_per_project(
           
 #error handle in python
      except DBAPIError:
-          project_not_found(project_id)
+          logger.exception("Database error")
+          raise HTTPException(
+               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+               detail="Cannot retrieve top materials"
+          )

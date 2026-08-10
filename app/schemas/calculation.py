@@ -18,8 +18,5 @@ class CalculationCreate(BaseModel):
      AxialForce: Decimal
      LoadValue: Decimal
      LoadCapacityFactor: Decimal
-     CreatedAt: datetime
      
-class CalculationMessageResponse(BaseModel):
-     message: str
      

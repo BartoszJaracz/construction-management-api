@@ -53,5 +53,3 @@ class ProjectBottleneckResponse(BaseModel):
      MainBottleneck: str
      BottleneckSeverity: str
      
-class MessageResponse(BaseModel):
-     message: str

@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.user import UserResponse, UserMessageResponse, ProjectUserResponse, UserRegister
+from app.schemas.user import UserResponse, ProjectUserResponse, UserRegister
+from app.schemas.common import MessageResponse
 from app.schemas.exceptions import user_not_found
 from app.security import get_password_hash
 import logging
@@ -55,9 +56,9 @@ def get_all_project_users(
      
 #assign user to project
 @router.put(
-     "/{user_id}/assign_user",
-     response_model=UserMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     "/{user_id}/projects/{project_id}",
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def assign_user_to_project(
      project_id: int,
@@ -76,28 +77,28 @@ def assign_user_to_project(
                     "user_id": user_id
                }
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               user_not_found(user_id)
                
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot assign user with id {user_id} to project with id {project_id}"
           )
-          
-     return UserMessageResponse(
+     
+     # if result.rowcount == 0:
+     #      user_not_found(user_id)     #validation in procedure
+     
+     return MessageResponse(
           message=f"User with id {user_id} successfully assigned to project with id {project_id}"
      )
      
 #user register
 @router.post(
      "/register",
+     response_model=MessageResponse,
      status_code=status.HTTP_201_CREATED
 )
 def register(
@@ -157,8 +158,15 @@ def register(
      
      except Exception:
           db.rollback()
+          logger.exception("Database error")
+          
+          raise HTTPException(
+               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+               detail="Cannot register user"
+          )
      
-     return UserMessageResponse(
+     
+     return MessageResponse(
           message=f"User with email: {user_data.email} registered successfully."
      )
      

@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.element import ElementResponse, ElementMessageResponse, ElementCreate, ElementWithoutCalculationsResponse
+from app.schemas.element import ElementResponse, ElementCreate, ElementWithoutCalculationsResponse
 from app.schemas.calculation import CalculationResponse
-from app.schemas.exceptions import element_not_found
+from app.schemas.exceptions import element_not_found, latest_calculation_not_found
+from app.schemas.common import MessageResponse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,9 @@ def get_top5_elements(
      ):
      
      result = db.execute(
-          text("SELECT TOP 5 * FROM StructuralElement se;")
+          text(""""SELECT TOP 5 *
+               FROM StructuralElement se
+               ORDER BY se.CreatedAt;""")
      )
      
      return [
@@ -39,7 +42,7 @@ def get_top5_elements(
      response_model=list[ElementWithoutCalculationsResponse],
      status_code=status.HTTP_200_OK
 )
-def get_elem_without_calcs(
+def get_elements_without_calculations(
      db: Session = Depends(get_db)
 ):
      
@@ -100,7 +103,7 @@ def get_latest_calculation(
      row = result.fetchone()
      
      if row is None:
-          element_not_found(element_id)
+          latest_calculation_not_found(element_id)
      
      return CalculationResponse(
           **row._mapping
@@ -109,7 +112,7 @@ def get_latest_calculation(
 #create new element
 @router.post(
      "",
-     response_model=ElementMessageResponse,
+     response_model=MessageResponse,
      status_code=status.HTTP_201_CREATED
 )
 def create_element(
@@ -131,7 +134,7 @@ def create_element(
           
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
@@ -139,7 +142,7 @@ def create_element(
                detail="Cannot create new element"
           )
           
-     return ElementMessageResponse(
+     return MessageResponse(
           message="Element created successfully"
      )
         
@@ -160,14 +163,10 @@ def delete_element(
                """),
                {"element_id": element_id}
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               element_not_found(element_id)
-               
+           
           db.commit()
      
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
@@ -175,12 +174,15 @@ def delete_element(
                detail= f"Cannot delete Element with ID {element_id}"
           )
           
+     if result.rowcount == 0:
+          element_not_found(element_id)
+          
      
 #update element dimensions
 @router.put(
      "/dimensions/{element_id}",
-     response_model=ElementMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_element_dimensions(
      element_id: int,
@@ -199,14 +201,10 @@ def update_element_dimensions(
                     "new_dimensions": new_dimensions
                }
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               element_not_found(element_id)
                
           db.commit()
                
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
@@ -214,6 +212,9 @@ def update_element_dimensions(
                detail=f"Cannot update element with ID {element_id}"
           )
      
-     return ElementMessageResponse(
+     if result.rowcount == 0:
+          element_not_found(element_id)
+     
+     return MessageResponse(
           message=f"Element with ID {element_id} set new element dimensions: {new_dimensions}"
      )

@@ -18,10 +18,6 @@ class ElementCreate(BaseModel):
      Name: Optional[str]
      Dimensions: Optional[str]
      TechnicalParameters: Optional[str]
-     CreatedAt: datetime
-
-class ElementMessageResponse(BaseModel):
-     message: str
 
 class ElementWithoutCalculationsResponse(BaseModel):
      ElementId: int

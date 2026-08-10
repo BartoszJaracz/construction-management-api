@@ -21,7 +21,7 @@ def element_not_found(element_id: int):
 def calculation_not_found(calculation_id: int):
      raise HTTPException(
           status_code=status.HTTP_404_NOT_FOUND,
-          detail=f"Element with ID {calculation_id} not found"
+          detail=f"Calculation with ID {calculation_id} not found"
      )
 
 #calculation update exception

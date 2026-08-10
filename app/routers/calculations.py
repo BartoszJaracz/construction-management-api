@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.calculation import CalculationResponse, CalculationCreate, CalculationMessageResponse
+from app.schemas.calculation import CalculationResponse, CalculationCreate
+from app.schemas.common import MessageResponse
 from app.schemas.exceptions import calculation_not_found, calculation_update_exception
 from decimal import Decimal
 import logging
@@ -41,7 +42,7 @@ def get_all_calculations(
      status_code=status.HTTP_200_OK
 )
 def get_calculation(
-     calculation_id = int,
+     calculation_id: int,
      db: Session= Depends(get_db)
 ):
      result = db.execute(
@@ -64,7 +65,7 @@ def get_calculation(
 #add calculation
 @router.post(
      "",
-     response_model=CalculationMessageResponse,
+     response_model=MessageResponse,
      status_code=status.HTTP_201_CREATED
 )
 def create_calculation(
@@ -86,7 +87,7 @@ def create_calculation(
           
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
@@ -94,7 +95,7 @@ def create_calculation(
                detail="Cannot create new calculation"
           )
           
-     return CalculationMessageResponse(
+     return MessageResponse(
           message="Calculation created successfully"
      )
      
@@ -116,27 +117,25 @@ def delete_calculation(
                {"calculation_id": calculation_id}
           )
           
-          if result.rowcount == 0:
-               db.rollback()
-               calculation_not_found(calculation_id)
-          
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete calculation with ID {calculation_id}"
           )
-     
+          
+     if result.rowcount == 0:
+          calculation_not_found(calculation_id)
      
           
 #update bending moment
 @router.put(
      "/{calculation_id}/bending_moment",
-     response_model=CalculationMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_bending_moment(
      calculation_id: int,
@@ -156,26 +155,25 @@ def update_bending_moment(
                }
           )
           
-          if result.rowcount == 0:
-               db.rollback()
-               calculation_not_found(calculation_id)
-          
           db.commit()     
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
-          return calculation_update_exception(calculation_id)
+          calculation_update_exception(calculation_id)
+     
+     if result.rowcount == 0:
+          calculation_not_found(calculation_id)
           
-     return CalculationMessageResponse(
+     return MessageResponse(
           message=f"Calculation with ID {calculation_id} successfully updated bending moment to {bending_moment}"
      )
      
 #update axial force
 @router.put(
      "/{calculation_id}/axial_force",
-     response_model=CalculationMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_axial_force(
      calculation_id: int,
@@ -194,27 +192,26 @@ def update_axial_force(
                     "axial_force": axial_force
                }
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               calculation_not_found(calculation_id)
                
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
-          return calculation_update_exception(calculation_id)
+          calculation_update_exception(calculation_id)
+     
+     if result.rowcount == 0:
+          calculation_not_found(calculation_id)
           
-     return CalculationMessageResponse(
+     return MessageResponse(
           message=f"Calculation with ID {calculation_id} successfully updated axial force to {axial_force}"
      )
      
 #update load value
 @router.put(
      "/{calculation_id}/load_value",
-     response_model=CalculationMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_load_value(
      calculation_id: int,
@@ -233,27 +230,26 @@ def update_load_value(
                     "load_value": load_value
                }
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               calculation_not_found(calculation_id)
                
           db.commit()
      
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
-          return calculation_update_exception(calculation_id)
+          calculation_update_exception(calculation_id)
+     
+     if result.rowcount == 0:
+          calculation_not_found(calculation_id)
           
-     return CalculationMessageResponse(
+     return MessageResponse(
           message=f"Calculation with ID {calculation_id} successfully updated load value to {load_value}"
      )
      
 #update load capacity factor
 @router.put(
      "/{calculation_id}/load_capacity_factor",
-     response_model=CalculationMessageResponse,
-     status_code=status.HTTP_201_CREATED
+     response_model=MessageResponse,
+     status_code=status.HTTP_200_OK
 )
 def update_load_capacity_factor(
      calculation_id: int,
@@ -272,18 +268,17 @@ def update_load_capacity_factor(
                     "load_capacity_factor": load_capacity_factor
                }
           )
-          
-          if result.rowcount == 0:
-               db.rollback()
-               calculation_not_found(calculation_id)
-               
+            
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
-          return calculation_update_exception(calculation_id)
+          calculation_update_exception(calculation_id)
           
-     return CalculationMessageResponse(
+     if result.rowcount == 0:
+          calculation_not_found(calculation_id)
+     
+     return MessageResponse(
           message=f"Calculation with ID {calculation_id} successfully updated load capacity factor to {load_capacity_factor}"
      )

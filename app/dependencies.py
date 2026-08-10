@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.security import SECRET_KEY, ALGORITHM
@@ -37,12 +38,11 @@ def get_current_user(
           
           user_id = payload.get("sub")
           
-          if not user_id:
+          if user_id is None:
                raise login_exception
      
-     except JWTError as e:
-          logger.warning(e)
-          
+     except JWTError:
+          logger.warning("Invalid JWT token")
           raise login_exception
      
      result = db.execute(

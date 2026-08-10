@@ -44,9 +44,6 @@ def user_login(
           
      if not user:
           raise login_exception
-     
-     print(user.PasswordHash)
-     print(type(user.PasswordHash))   
        
      if not verify_password(form_data.password, user.PasswordHash):
           raise login_exception
@@ -62,11 +59,9 @@ def user_login(
           )
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
-          
           logger.exception("Database error")
-          
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail="Login failed"

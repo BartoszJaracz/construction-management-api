@@ -8,7 +8,6 @@ class UserResponse(BaseModel):
      FirstName: Optional[str]
      LastName: Optional[str]
      Email: Optional[str]
-     Password: str
      Role: Optional[str]
      IsActive: int
      CreatedAt: datetime
@@ -18,15 +17,12 @@ class ProjectUserResponse(BaseModel):
      UserId: int
      ProjectRole: Optional[str]
      
-class UserMessageResponse(BaseModel):
-     message: str
-
 #user registration
 class UserRegister(BaseModel):
      first_name: str
      last_name: str
      email: EmailStr
-     password: str
+     password: str = Field(min_length=8, max_length=100)
      
 #user login & password validation
 class UserLogin(BaseModel):

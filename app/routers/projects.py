@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse, MessageResponse
+from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse
+from app.schemas.common import MessageResponse
 from app.database import get_db
 from app.schemas.exceptions import project_not_found
 from app.dependencies import require_admin
@@ -58,7 +59,6 @@ def get_project(
 
         if row is None:
           #   return {"message": "Project not found"}
-          
           project_not_found(project_id)
           
 
@@ -90,7 +90,6 @@ def get_project_dashboard(
      
      if row is None:
           # return {"message": "Project not found"}
-          
           project_not_found(project_id)
      
      return ProjectDashboardResponse(
@@ -118,7 +117,6 @@ def get_project_bottleneck(
      row = result.fetchone()
      
      if row is None:
-          
           project_not_found(project_id)
      
      return ProjectBottleneckResponse(
@@ -164,7 +162,7 @@ def create_project(
           
           db.commit()
      
-     except Exception as e:
+     except Exception:
           #rollback if error
           # connection.rollback()
           #print rollback message
@@ -200,19 +198,18 @@ def delete_project(
                {"project_id": project_id},
           )
           
-          if result.rowcount == 0:
-               db.rollback()
-               project_not_found(project_id)
-               
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException (
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail=f"Cannot delete Project with ID {project_id}"
           )
+          
+     if result.rowcount == 0:
+          project_not_found(project_id)
           
      # return {
      #      "message": f"Project with ID {project_id} deleted successfully"
@@ -222,7 +219,7 @@ def delete_project(
 @router.put(
      "/{project_id}/status",
      response_model=MessageResponse,
-     status_code=status.HTTP_201_CREATED
+     status_code=status.HTTP_200_OK
      )
 def update_project_status(
      project_id: int,
@@ -244,7 +241,7 @@ def update_project_status(
           
           db.commit()
           
-     except Exception as e:
+     except Exception:
           db.rollback()
           logger.exception("Database error")
           raise HTTPException (
