@@ -54,3 +54,10 @@ def user_not_found(user_id: int):
           status_code=status.HTTP_404_NOT_FOUND,
           detail=f"User with ID {user_id} not found"
      )
+
+#latest calcs not found exception 
+def latest_calculation_not_found(element_id: int):
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail=f"Latest calculation for element with ID {element_id} not found"
+    )

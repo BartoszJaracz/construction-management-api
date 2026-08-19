@@ -51,9 +51,9 @@ def user_login(
      try:               
           db.execute(
                text("""
-                    UPDATE [User] u
-                    SET u.LastLogin = GETDATE()
-                    WHERE u.UserId = :user_id;
+                    UPDATE [User]
+                    SET LastLogin = GETDATE()
+                    WHERE UserId = :user_id;
                """),
                {"user_id": user.UserId}
           )

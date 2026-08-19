@@ -1,12 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from app.config import DB_SERVER, DB_NAME, DB_DRIVER
 
-SERVER = "localhost"
-DATABASE = "project_management_db"
 
 connection_string = (
-    f"mssql+pyodbc://@{SERVER}/{DATABASE}"
-    "?driver=ODBC+Driver+17+for+SQL+Server"
+    f"mssql+pyodbc://@{DB_SERVER}/{DB_NAME}"
+    f"?driver={DB_DRIVER.replace(' ', '+')}"
     "&trusted_connection=yes"
 )
 
@@ -19,12 +18,10 @@ SessionLocal = sessionmaker(
 )
 
 
-#connection generator
 def get_db():
     db = SessionLocal()
-    
+
     try:
         yield db
-        
     finally:
         db.close()
