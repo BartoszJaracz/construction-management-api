@@ -40,12 +40,11 @@ def material_not_found(material_id: int):
      
 #material-usage not found exception
 def material_usage_not_found(
-     element_id: int,
-     quantity: Decimal
+     material_usage_id: int
      ):
           raise HTTPException(
                status_code=status.HTTP_404_NOT_FOUND,
-               detail=f"Material usage with ID {element_id} and Quantity {quantity} not found"
+               detail=f"Material usage with ID {material_usage_id} not found"
           )
           
 #user not found exception

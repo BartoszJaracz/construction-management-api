@@ -2,10 +2,14 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.user import UserResponse, ProjectUserResponse, UserRegister
+from app.schemas.user import(
+          UserResponse,
+          ProjectUserResponse,
+          UserRegister
+     )
 from app.schemas.common import MessageResponse
-from app.schemas.exceptions import user_not_found
 from app.security import get_password_hash
+from app.dependencies import require_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -23,8 +27,9 @@ router = APIRouter(
      status_code=status.HTTP_200_OK
 )
 def get_all_users(
+     current_user = Depends(require_admin),
      db: Session= Depends(get_db)
-):
+) -> list[UserResponse]:
      result = db.execute(
           text("""
                SELECT * FROM [User] u;
@@ -42,8 +47,9 @@ def get_all_users(
      status_code=status.HTTP_200_OK
 )
 def get_all_project_users(
+     current_user = Depends(require_admin),
      db: Session= Depends(get_db)
-):
+) -> list[ProjectUserResponse]:
      result = db.execute(
           text("""
                SELECT * FROM ProjectUser pu;
@@ -63,10 +69,11 @@ def get_all_project_users(
 def assign_user_to_project(
      project_id: int,
      user_id: int,
+     current_user = Depends(require_admin),
      db: Session= Depends(get_db)
-):
+) -> MessageResponse:
      try:
-          result = db.execute(
+          db.execute(
                text("""
                     EXEC sp_AssignUserToProject
                     @ProjectId = :project_id,
@@ -88,9 +95,6 @@ def assign_user_to_project(
                detail=f"Cannot assign user with id {user_id} to project with id {project_id}"
           )
      
-     # if result.rowcount == 0:
-     #      user_not_found(user_id)     #validation in procedure
-     
      return MessageResponse(
           message=f"User with id {user_id} successfully assigned to project with id {project_id}"
      )
@@ -104,7 +108,7 @@ def assign_user_to_project(
 def register(
      user_data: UserRegister,
      db: Session= Depends(get_db)
-):
+) -> MessageResponse:
      result = db.execute(
           text("""
                SELECT u.UserId FROM [User] u WHERE u.Email = :email;

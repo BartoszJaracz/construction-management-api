@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.element import ElementResponse, ElementCreate, ElementWithoutCalculationsResponse
+from app.schemas.element import (
+          ElementResponse,
+          ElementCreate,
+          ElementWithoutCalculationsResponse
+     )
 from app.schemas.calculation import CalculationResponse
 from app.schemas.exceptions import element_not_found, latest_calculation_not_found
 from app.schemas.common import MessageResponse
@@ -24,12 +28,12 @@ router = APIRouter(
 )
 def get_top5_elements(
      db: Session = Depends(get_db)
-     ):
+     ) -> list[ElementResponse]:
      
      result = db.execute(
-          text(""""SELECT TOP 5 *
+          text("""SELECT TOP 5 *
                FROM StructuralElement se
-               ORDER BY se.CreatedAt;""")
+               ORDER BY se.CreatedAt DESC;""")
      )
      
      return [
@@ -44,7 +48,7 @@ def get_top5_elements(
 )
 def get_elements_without_calculations(
      db: Session = Depends(get_db)
-):
+) -> list[ElementWithoutCalculationsResponse]:
      
      result = db.execute(
           text("""SELECT * FROM vw_ElementsWithoutCalculations vewc;""")
@@ -63,7 +67,7 @@ def get_elements_without_calculations(
 def get_element(
      element_id: int,
      db: Session = Depends(get_db)
-     ):
+     ) -> ElementResponse:
      
      result = db.execute(
           text("""
@@ -91,7 +95,7 @@ def get_element(
 def get_latest_calculation(
      element_id: int,
      db: Session= Depends(get_db)
-):
+) -> CalculationResponse:
      result = db.execute(
           text("""
                SELECT * FROM vw_LatestCalculationsPerElement vlcpe
@@ -118,7 +122,7 @@ def get_latest_calculation(
 def create_element(
      element: ElementCreate,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           db.execute(
                text("""
@@ -154,7 +158,7 @@ def create_element(
 def delete_element(
      element_id: int,
      db: Session = Depends(get_db)
-):
+) -> None:
      try:
           result = db.execute(
                text("""
@@ -180,7 +184,7 @@ def delete_element(
      
 #update element dimensions
 @router.put(
-     "/dimensions/{element_id}",
+     "/{element_id}/dimensions",
      response_model=MessageResponse,
      status_code=status.HTTP_200_OK
 )
@@ -188,7 +192,7 @@ def update_element_dimensions(
      element_id: int,
      new_dimensions: str,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""

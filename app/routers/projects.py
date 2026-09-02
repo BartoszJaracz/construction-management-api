@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from app.schemas.project import ProjectCreate, ProjectStatusUpdate, ProjectResponse, ProjectDashboardResponse, ProjectBottleneckResponse
+from app.schemas.project import(
+          ProjectCreate,
+          ProjectStatusUpdate,
+          ProjectResponse,
+          ProjectDashboardResponse,
+          ProjectBottleneckResponse
+     )
 from app.schemas.common import MessageResponse
 from app.database import get_db
 from app.schemas.exceptions import project_not_found
@@ -25,7 +31,7 @@ router = APIRouter(
      )
 def get_projects(
      db: Session = Depends(get_db)
-     ):
+     ) -> list[ProjectResponse]:
 
         result = db.execute(
             text("SELECT * FROM Project")
@@ -44,7 +50,7 @@ def get_projects(
 def get_project(
      project_id: int,
      db: Session = Depends(get_db)
-     ):
+     ) -> ProjectResponse:
      
         result = db.execute(
             text("""
@@ -58,7 +64,6 @@ def get_project(
         row = result.fetchone()
 
         if row is None:
-          #   return {"message": "Project not found"}
           project_not_found(project_id)
           
 
@@ -70,13 +75,13 @@ def get_project(
    
 #get dashboard with project_id
 @router.get(
-     "/dashboard/{project_id}",
+     "/{project_id}/dashboard",
      response_model=ProjectDashboardResponse
      )
 def get_project_dashboard(
      project_id: int,
      db: Session = Depends(get_db)
-     ):
+     ) -> ProjectDashboardResponse:
      
      result = db.execute(
           text("""
@@ -89,7 +94,6 @@ def get_project_dashboard(
      row = result.fetchone()
      
      if row is None:
-          # return {"message": "Project not found"}
           project_not_found(project_id)
      
      return ProjectDashboardResponse(
@@ -105,7 +109,7 @@ def get_project_dashboard(
 def get_project_bottleneck(
      project_id: int,
      db: Session = Depends(get_db)
-     ):
+     ) -> ProjectBottleneckResponse:
      
      result = db.execute(
           text("""
@@ -133,7 +137,7 @@ def get_project_bottleneck(
 def create_project(
      project: ProjectCreate,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           db.execute(
                text("""
@@ -158,14 +162,10 @@ def create_project(
                """),
                project.model_dump()
           )
-          # connection.commit()
           
           db.commit()
      
      except Exception:
-          #rollback if error
-          # connection.rollback()
-          #print rollback message
           db.rollback()
           logger.exception("Database error")
           #raise error http
@@ -189,7 +189,7 @@ def delete_project(
      project_id: int,
      current_user = Depends(require_admin),
      db: Session = Depends(get_db)
-):
+) -> None:
      try:
           result = db.execute(
                text("""
@@ -210,11 +210,7 @@ def delete_project(
           
      if result.rowcount == 0:
           project_not_found(project_id)
-          
-     # return {
-     #      "message": f"Project with ID {project_id} deleted successfully"
-     # }
-     
+             
 #update project status
 @router.put(
      "/{project_id}/status",
@@ -225,7 +221,7 @@ def update_project_status(
      project_id: int,
      status_update: ProjectStatusUpdate,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           db.execute(
                text("""
@@ -250,6 +246,9 @@ def update_project_status(
           )
           
      return MessageResponse (
-          message= f"Status {status_update.new_status} set to project with ID {project_id}"
+          message=(
+                    f"Status {status_update.new_status} "
+                    f"set to project with ID {project_id}"
+               )
      )
           

@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.user import UserLogin, TokenResponse
+from app.schemas.user import TokenResponse
 from app.security import verify_password, create_access_token
 import logging
 
@@ -25,7 +25,7 @@ router = APIRouter(
 def user_login(
      form_data: OAuth2PasswordRequestForm = Depends(),
      db: Session= Depends(get_db)
-):
+) -> TokenResponse:
      #login exception
      login_exception = HTTPException(
                status_code=status.HTTP_401_UNAUTHORIZED,

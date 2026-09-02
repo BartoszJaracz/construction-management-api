@@ -1,10 +1,18 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Path
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import DBAPIError
 from app.database import get_db
-from app.schemas.material import MaterialResponse, MaterialUsageResponse, TopMaterialPerProjectResponse, MaterialUsageAdd
-from app.schemas.exceptions import material_not_found, project_not_found, element_not_found, material_usage_not_found
+from app.schemas.material import(
+          MaterialResponse,
+          MaterialUsageResponse,
+          TopMaterialPerProjectResponse,
+          MaterialUsageAdd
+     )
+from app.schemas.exceptions import(
+          material_not_found,
+          material_usage_not_found
+     )
 from app.schemas.common import MessageResponse
 from decimal import Decimal
 import logging
@@ -25,7 +33,7 @@ router = APIRouter(
 )
 def get_materials(
      db: Session= Depends(get_db)  
-):
+) -> list[MaterialResponse]:
      result = db.execute(
           text("""
                SELECT * FROM Material m;
@@ -45,7 +53,7 @@ def get_materials(
 def get_material_usage_with_material_id(
      material_id: int,
      db: Session= Depends(get_db)
-):
+) -> list[MaterialUsageResponse]:
      result = db.execute(
           text("""
                SELECT * FROM MaterialUsage mu
@@ -72,7 +80,7 @@ def add_material_usage(
      material_id: int,
      material_usage: MaterialUsageAdd,
      db: Session= Depends(get_db)
-):
+) -> MessageResponse:
      try:
           #combine all parameteres into one
           query_params = material_usage.model_dump()
@@ -119,25 +127,20 @@ def add_material_usage(
 
 #delete MaterialUsage by ElementId & Quantity
 @router.delete(
-     "/usage/{element_id}/{quantity}",
+     "/usage/{material_usage_id}",
      status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_material_usage(
-     element_id: int,
-     quantity: Decimal,
+     material_usage_id: int,
      db: Session= Depends(get_db)
-):
+) -> None:
      try:
           result = db.execute(
                text("""
                     DELETE FROM MaterialUsage
-                    WHERE ElementId = :element_id
-                    AND Quantity = :quantity;
+                    WHERE MaterialUsageId = :material_usage_id;
                """),
-               {
-                    "element_id": element_id,
-                    "quantity": quantity
-               }
+               {"material_usage_id": material_usage_id}
           )
           
           db.commit()
@@ -147,35 +150,32 @@ def delete_material_usage(
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot delete MaterialUsage with ElementId {element_id} and Quantity {quantity}"
+               detail=f"Cannot delete MaterialUsage with ID {material_usage_id}"
           )    
           
      if result.rowcount == 0:
-          element_not_found(element_id)      
+          material_usage_not_found(material_usage_id)      
 
 #update MaterialUsage by ElementId & Quantity
 @router.put(
-     "/usage/{element_id}/{quantity}/{new_quantity}",
+     "/usage/{material_usage_id}/{new_quantity}",
      response_model= MessageResponse,
      status_code=status.HTTP_200_OK
 )
 def update_material_usage_quantity(
-     element_id: int,
-     quantity: Decimal,
+     material_usage_id: int,
      new_quantity: Decimal,
      db: Session= Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""
                     UPDATE MaterialUsage
                     SET Quantity = :new_quantity
-                    WHERE ElementId = :element_id
-                    AND quantity = :quantity; 
+                    WHERE MaterialUsageId = :material_usage_id; 
                """),
                {
-                    "element_id": element_id,
-                    "quantity": quantity,
+                    "material_usage_id": material_usage_id,
                     "new_quantity": new_quantity
                }
           )
@@ -187,14 +187,14 @@ def update_material_usage_quantity(
           logger.exception("Database error")
           raise HTTPException(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot update material usage quantity with ElementId {element_id}"
+               detail=f"Cannot update material usage quantity with ID {material_usage_id}"
           )
           
      if result.rowcount==0:
-          material_usage_not_found(element_id, quantity)
+          material_usage_not_found(material_usage_id)
 
      return MessageResponse(
-          message=f"Quantity {new_quantity} set to element with ID {element_id}"
+          message=f"Quantity {new_quantity} set to element with ID {material_usage_id}"
      )
 
 #get top material per project
@@ -205,9 +205,9 @@ def update_material_usage_quantity(
 )
 def get_top_material_per_project(
      project_id: int,
-     top_n: int,
+     top_n: int = Path(gt=0),
      db: Session= Depends(get_db)
-):
+) -> list[TopMaterialPerProjectResponse]:
      try:
           result = db.execute(
                text("""
@@ -223,8 +223,8 @@ def get_top_material_per_project(
           
           rows = result.fetchall()
           
-          if not rows:
-               project_not_found(project_id)
+          # if not rows:
+          #      project_not_found(project_id)
           
           return [
                TopMaterialPerProjectResponse(**row._mapping) for row in rows

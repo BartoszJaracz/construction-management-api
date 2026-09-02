@@ -24,7 +24,7 @@ router = APIRouter(
 )
 def get_all_calculations(
      db: Session= Depends(get_db)
-):
+) -> list[CalculationResponse]:
      result = db.execute(
           text("""
                SELECT * FROM Calculation c;
@@ -44,7 +44,7 @@ def get_all_calculations(
 def get_calculation(
      calculation_id: int,
      db: Session= Depends(get_db)
-):
+) -> CalculationResponse:
      result = db.execute(
           text("""
                SELECT * FROM Calculation c
@@ -71,7 +71,7 @@ def get_calculation(
 def create_calculation(
      calculation: CalculationCreate,
      db: Session= Depends(get_db)
-):
+) -> MessageResponse:
      try:
           db.execute(
                text("""
@@ -107,7 +107,7 @@ def create_calculation(
 def delete_calculation(
      calculation_id: int,
      db: Session= Depends(get_db)
-):
+) -> None:
      try:
           result = db.execute(
                text("""
@@ -141,7 +141,7 @@ def update_bending_moment(
      calculation_id: int,
      bending_moment: Decimal,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""
@@ -179,7 +179,7 @@ def update_axial_force(
      calculation_id: int,
      axial_force: Decimal,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""
@@ -217,7 +217,7 @@ def update_load_value(
      calculation_id: int,
      load_value: Decimal,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""
@@ -255,7 +255,7 @@ def update_load_capacity_factor(
      calculation_id: int,
      load_capacity_factor: Decimal,
      db: Session = Depends(get_db)
-):
+) -> MessageResponse:
      try:
           result = db.execute(
                text("""
