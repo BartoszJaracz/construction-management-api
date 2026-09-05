@@ -26,3 +26,7 @@ class TopMaterialPerProjectResponse(BaseModel):
 class MaterialUsageAdd(BaseModel):
      UnitId: Optional[int]
      Quantity: Optional[Decimal]
+     
+class MaterialUsageMessageResponse(BaseModel):
+     MaterialUsageId: int
+     message: str

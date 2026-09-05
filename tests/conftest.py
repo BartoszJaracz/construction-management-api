@@ -22,6 +22,7 @@ def db():
           
 @pytest.fixture
 def material_usage(db):
+     element_id = 2
      result = db.execute(
           text("""
                INSERT INTO MaterialUsage
@@ -34,18 +35,19 @@ def material_usage(db):
                OUTPUT INSERTED.MaterialUsageId
                VALUES
                (
-                    2,
+                    :element_id,
                     2,
                     2,
                     22
                );
-          """)
+          """),
+          {"element_id": element_id}
      )
      material_usage_id = result.scalar()
      db.commit()
      
      try:
-          yield material_usage_id
+          yield material_usage_id, element_id
      finally:
           db.execute(
                text("""
@@ -54,5 +56,4 @@ def material_usage(db):
                """),
                {"material_usage_id": material_usage_id}
           )
-          
           db.commit()

@@ -7,7 +7,8 @@ from app.schemas.material import(
           MaterialResponse,
           MaterialUsageResponse,
           TopMaterialPerProjectResponse,
-          MaterialUsageAdd
+          MaterialUsageAdd,
+          MaterialUsageMessageResponse
      )
 from app.schemas.exceptions import(
           material_not_found,
@@ -73,14 +74,14 @@ def get_material_usage_with_material_id(
 @router.post(
      "/usage/{element_id}/{material_id}",
      status_code=status.HTTP_201_CREATED,
-     response_model=MessageResponse
+     response_model=MaterialUsageMessageResponse
 )
 def add_material_usage(
      element_id: int,
      material_id: int,
      material_usage: MaterialUsageAdd,
      db: Session= Depends(get_db)
-) -> MessageResponse:
+) -> MaterialUsageMessageResponse:
      try:
           #combine all parameteres into one
           query_params = material_usage.model_dump()
@@ -89,7 +90,7 @@ def add_material_usage(
                "MaterialId": material_id
           })
           
-          db.execute(
+          result = db.execute(
                text("""
                     INSERT INTO MaterialUsage
                     (
@@ -99,6 +100,7 @@ def add_material_usage(
                          Quantity,
                          UsedAt
                     )
+                    OUTPUT INSERTED.MaterialUsageId
                     VALUES
                     (
                          :ElementId,
@@ -110,7 +112,7 @@ def add_material_usage(
                """),
                query_params
           )
-          
+          material_usage_id = result.scalar()
           db.commit()
           
      except Exception:
@@ -120,8 +122,9 @@ def add_material_usage(
                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                detail="Cannot add material usage"
           )
-          
-     return MessageResponse(
+     
+     return MaterialUsageMessageResponse(
+          MaterialUsageId=material_usage_id,
           message="Material usage added successfully"
      )
 
