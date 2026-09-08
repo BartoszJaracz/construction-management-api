@@ -5,7 +5,8 @@ from app.database import get_db
 from app.schemas.element import (
           ElementResponse,
           ElementCreate,
-          ElementWithoutCalculationsResponse
+          ElementWithoutCalculationsResponse,
+          ElementMessageResponse
      )
 from app.schemas.calculation import CalculationResponse
 from app.schemas.exceptions import element_not_found, latest_calculation_not_found
@@ -116,15 +117,15 @@ def get_latest_calculation(
 #create new element
 @router.post(
      "",
-     response_model=MessageResponse,
+     response_model=ElementMessageResponse,
      status_code=status.HTTP_201_CREATED
 )
 def create_element(
      element: ElementCreate,
      db: Session = Depends(get_db)
-) -> MessageResponse:
+) -> ElementMessageResponse:
      try:
-          db.execute(
+          result = db.execute(
                text("""
                     EXEC sp_AddStructuralElement
                          @ProjectId = :ProjectId,
@@ -135,7 +136,7 @@ def create_element(
                """),
                element.model_dump()
           )
-          
+          element_id = result.scalar()
           db.commit()
           
      except Exception:
@@ -146,7 +147,8 @@ def create_element(
                detail="Cannot create new element"
           )
           
-     return MessageResponse(
+     return ElementMessageResponse(
+          ElementId=element_id,
           message="Element created successfully"
      )
         

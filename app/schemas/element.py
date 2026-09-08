@@ -26,3 +26,7 @@ class ElementWithoutCalculationsResponse(BaseModel):
      Name: Optional[str]
      Dimensions: Optional[str]
      TechnicalParameters: Optional[str]
+     
+class ElementMessageResponse(BaseModel):
+     ElementId: int
+     message: str
