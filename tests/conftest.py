@@ -2,6 +2,7 @@ import pytest
 from app.database import SessionLocal, get_db
 from app.main import app
 from sqlalchemy import text
+from datetime import date
 
 
 @pytest.fixture
@@ -90,5 +91,53 @@ def element(db):
                     WHERE ElementId = :element_id;
                """),
                {"element_id": element_id}
+          )
+          db.commit()
+          
+@pytest.fixture
+def project(db):
+     params = {
+          "ProjectName": "Test Name",
+          "Scope": "Test Scope",
+          "Location": "Test Location",
+          "Status": "Nowy",
+          "DueDate": date(2030, 9, 30)
+     }
+     result = db.execute(
+          text("""
+               INSERT INTO Project
+               (
+                    ProjectName,
+                    Scope,
+                    Location,
+                    Status,
+                    DueDate,
+                    CreatedAt
+               )
+               OUTPUT INSERTED.ProjectId
+               VALUES
+               (
+                    :ProjectName,
+                    :Scope,
+                    :Location,
+                    :Status,
+                    :DueDate,
+                    GETDATE()
+               )
+          """),
+          params
+     )
+     project_id = result.scalar()
+     db.commit()
+     
+     try:
+          yield project_id
+     finally:
+          db.execute(
+               text("""
+                    DELETE FROM Project
+                    WHERE ProjectId = :project_id
+               """),
+               {"project_id": project_id}
           )
           db.commit()

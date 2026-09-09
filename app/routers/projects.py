@@ -6,7 +6,8 @@ from app.schemas.project import(
           ProjectStatusUpdate,
           ProjectResponse,
           ProjectDashboardResponse,
-          ProjectBottleneckResponse
+          ProjectBottleneckResponse,
+          ProjectMessageResponse
      )
 from app.schemas.common import MessageResponse
 from app.database import get_db
@@ -131,15 +132,15 @@ def get_project_bottleneck(
 #create project
 @router.post(
      "",
-     response_model=MessageResponse,
+     response_model=ProjectMessageResponse,
      status_code=status.HTTP_201_CREATED
      )
 def create_project(
      project: ProjectCreate,
      db: Session = Depends(get_db)
-) -> MessageResponse:
+) -> ProjectMessageResponse:
      try:
-          db.execute(
+          result = db.execute(
                text("""
                     INSERT INTO Project
                     (
@@ -150,6 +151,7 @@ def create_project(
                          DueDate,
                          CreatedAt
                     )
+                    OUTPUT INSERTED.ProjectId
                     VALUES
                     (
                          :ProjectName,
@@ -162,7 +164,7 @@ def create_project(
                """),
                project.model_dump()
           )
-          
+          project_id = result.scalar()
           db.commit()
      
      except Exception:
@@ -174,11 +176,10 @@ def create_project(
                detail="Cannot create new project"
           )
      
-     return MessageResponse(
+     return ProjectMessageResponse(
+          ProjectId=project_id,
           message="Project created successfully"
      )
-     
-     
      
 #delete project
 @router.delete(

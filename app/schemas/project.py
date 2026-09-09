@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from datetime import date, datetime
+from datetime import date
 from enum import Enum
 from typing import Optional
 
@@ -52,4 +52,8 @@ class ProjectBottleneckResponse(BaseModel):
      DaysToDeadline: Optional[int] = None
      MainBottleneck: str
      BottleneckSeverity: str
+     
+class ProjectMessageResponse(BaseModel):
+     ProjectId: int
+     message: str
      
