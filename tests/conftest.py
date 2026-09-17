@@ -141,3 +141,105 @@ def project(db):
                {"project_id": project_id}
           )
           db.commit()
+          
+@pytest.fixture
+def admin_user(db):
+     params = {
+          "FirstName": "Test",
+          "LastName": "Test",
+          "Email": "test123@test.com",
+          "Role": "ADMIN",
+          "IsActive": 1,
+          "PasswordHash": "test123"
+     }
+     result = db.execute(
+          text("""
+               INSERT INTO [User]
+               (
+                    FirstName,
+                    LastName,
+                    Email,
+                    Role,
+                    IsActive,
+                    CreatedAt,
+                    PasswordHash
+               )
+               OUTPUT INSERTED.UserId
+               VALUES
+               (
+                    :FirstName,
+                    :LastName,
+                    :Email,
+                    :Role,
+                    :IsActive,
+                    GETDATE(),
+                    :PasswordHash
+               )
+          """),
+          params
+     )
+     user_id = result.scalar()
+     db.commit()
+     
+     try:
+          yield user_id
+     finally:
+          db.execute(
+               text("""
+                    DELETE FROM [User]
+                    WHERE UserId = :user_id
+               """),
+               {"user_id": user_id}
+          )
+          db.commit()
+          
+@pytest.fixture
+def regular_user(db):
+     params = {
+          "FirstName": "Test",
+          "LastName": "Test",
+          "Email": "test123@test.com",
+          "Role": "ASYSTENT",
+          "IsActive": 1,
+          "PasswordHash": "test123"
+     }
+     result = db.execute(
+          text("""
+               INSERT INTO [User]
+               (
+                    FirstName,
+                    LastName,
+                    Email,
+                    Role,
+                    IsActive,
+                    CreatedAt,
+                    PasswordHash
+               )
+               OUTPUT INSERTED.UserId
+               VALUES
+               (
+                    :FirstName,
+                    :LastName,
+                    :Email,
+                    :Role,
+                    :IsActive,
+                    GETDATE(),
+                    :PasswordHash
+               )
+          """),
+          params
+     )
+     user_id = result.scalar()
+     db.commit()
+     
+     try:
+          yield user_id
+     finally:
+          db.execute(
+               text("""
+                    DELETE FROM [User]
+                    WHERE UserId = :user_id
+               """),
+               {"user_id": user_id}
+          )
+          db.commit()

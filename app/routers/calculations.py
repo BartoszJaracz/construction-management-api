@@ -4,7 +4,11 @@ from sqlalchemy import text
 from app.database import get_db
 from app.schemas.calculation import CalculationResponse, CalculationCreate
 from app.schemas.common import MessageResponse
-from app.schemas.exceptions import calculation_not_found, calculation_update_exception
+from app.schemas.exceptions import(
+          calculation_not_found,
+          calculation_update_exception,
+          database_error
+     )
 from decimal import Decimal
 import logging
 
@@ -90,11 +94,8 @@ def create_calculation(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot create new calculation"
-          )
-          
+          database_error("Cannot create new calculation")
+                    
      return MessageResponse(
           message="Calculation created successfully"
      )
@@ -122,10 +123,7 @@ def delete_calculation(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot delete calculation with ID {calculation_id}"
-          )
+          database_error(f"Cannot delete calculation with ID {calculation_id}")
           
      if result.rowcount == 0:
           calculation_not_found(calculation_id)

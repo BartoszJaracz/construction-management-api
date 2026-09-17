@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text
 from app.schemas.project import(
           ProjectCreate,
@@ -11,8 +12,11 @@ from app.schemas.project import(
      )
 from app.schemas.common import MessageResponse
 from app.database import get_db
-from app.schemas.exceptions import project_not_found
-from app.dependencies import require_admin
+from app.schemas.exceptions import (
+          project_not_found,
+          database_error
+     )
+from app.dependencies import require_admin, get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
@@ -63,17 +67,12 @@ def get_project(
         )
 
         row = result.fetchone()
-
+        
         if row is None:
           project_not_found(project_id)
           
+        return ProjectResponse(**row._mapping)
 
-        return ProjectResponse(
-             **row._mapping
-        )
-
-   
-   
 #get dashboard with project_id
 @router.get(
      "/{project_id}/dashboard",
@@ -137,6 +136,7 @@ def get_project_bottleneck(
      )
 def create_project(
      project: ProjectCreate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> ProjectMessageResponse:
      try:
@@ -170,11 +170,7 @@ def create_project(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          #raise error http
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot create new project"
-          )
+          database_error(f"Cannot create new project")
      
      return ProjectMessageResponse(
           ProjectId=project_id,
@@ -204,10 +200,7 @@ def delete_project(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException (
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot delete Project with ID {project_id}"
-          )
+          database_error(f"Cannot delete project with ID {project_id}")
           
      if result.rowcount == 0:
           project_not_found(project_id)
@@ -221,6 +214,7 @@ def delete_project(
 def update_project_status(
      project_id: int,
      status_update: ProjectStatusUpdate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -238,13 +232,17 @@ def update_project_status(
           
           db.commit()
           
+     except ProgrammingError as e:
+          db.rollback()
+          if "50001" in str(e):
+               project_not_found(project_id)
+          logger.exception("Database error")
+          database_error(f"Cannot update project with ID {project_id}")
+          
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException (
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot update project with ID {project_id}"
-          )
+          database_error(f"Cannot update project with ID {project_id}")
           
      return MessageResponse (
           message=(

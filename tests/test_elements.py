@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from app.main import app
 from sqlalchemy import text
+from app.security import create_access_token
 
 client = TestClient(app)
 
@@ -38,7 +39,10 @@ def test_get_elements_without_calculations(element):
      element_id_list = [item["ElementId"] for item in json_data]
      assert element_id in element_id_list
           
-def test_create_element_success(db):
+def test_create_element_success(regular_user, db):
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
      response = client.post(
           "/elements",
           json={
@@ -47,7 +51,8 @@ def test_create_element_success(db):
                "Name": "Test element",
                "Dimensions": "100x100",
                "TechnicalParameters": "Test parameters"
-          }
+          },
+          headers={"Authorization": f"Bearer {token}"}
      )
      assert response.status_code == 201
      json_data = response.json()
@@ -77,3 +82,136 @@ def test_create_element_success(db):
           )
           db.commit()
      
+def test_create_element_project_not_found(regular_user):
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     response = client.post(
+          "/elements",
+          json={
+               "ProjectId": 99999999,
+               "ElementTypeId": 1,
+               "Name": "Test Element",
+               "Dimensions": "100x100mm",
+               "TechnicalParameters": "Test Parameters"
+          },
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 404
+     json_data = response.json()
+     assert "not found" in json_data["detail"]
+     
+def test_create_element_without_authentication():
+     response = client.post(
+          "/elements",
+          json={
+               "ProjectId": 1,
+               "ElementTypeId": 1,
+               "Name": "Test element",
+               "Dimensions": "100x100",
+               "TechnicalParameters": "Test parameters"
+          }
+     )
+     assert response.status_code == 401
+     
+def test_create_element_invalid_token():
+     token = create_access_token(
+          data={"sub": "99999999"}
+     )
+     response = client.post(
+          "/elements",
+          json={
+               "ProjectId": 1,
+               "ElementTypeId": 1,
+               "Name": "Test element",
+               "Dimensions": "100x100",
+               "TechnicalParameters": "Test parameters"
+          },
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 401
+     
+def test_update_element_dimensions_success(regular_user, element, db):
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     element_id = element
+     response = client.put(
+          f"/elements/{element_id}/dimensions?new_dimensions=200x300",
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 200
+     result = db.execute(
+          text("""
+               SELECT Dimensions FROM StructuralElement
+               WHERE ElementId = :element_id    
+          """),
+          {"element_id": element_id}
+     )
+     dimensions = result.scalar()
+     assert dimensions == "200x300"
+     
+def test_update_element_dimensions_without_authentication(element):
+     element_id = element
+     response = client.put(
+          f"/elements/{element_id}/dimensions?new_dimensions=200x300"
+     )
+     assert response.status_code == 401
+     
+def test_update_element_dimensions_not_found(regular_user):
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     response = client.put(
+          "/elements/9999999/dimensions?new_dimensions=200x300",
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 404
+     
+def test_delete_element_without_authentication(element):
+     element_id = element
+     response = client.delete(
+          f"/elements/{element_id}"
+     )
+     assert response.status_code == 401
+     
+def test_delete_element_without_admin_role(regular_user, element):
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     element_id = element
+     response = client.delete(
+          f"/elements/{element_id}",
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 403
+     
+def test_delete_element_admin_element_not_found(admin_user):
+     token = create_access_token(
+          data={"sub": str(admin_user)}
+     )
+     response = client.delete(
+          "/elements/99999999",
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 404
+     
+def test_delete_element_success(admin_user, element, db):
+     token = create_access_token(
+          data={"sub": str(admin_user)}
+     )
+     element_id = element
+     response = client.delete(
+          f"/elements/{element_id}",
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 204
+     query = db.execute(
+          text("""
+               SELECT ElementId FROM StructuralElement
+               WHERE ElementId = :element_id;     
+          """),
+          {"element_id": element_id}
+     )
+     result = query.scalar()
+     assert result is None

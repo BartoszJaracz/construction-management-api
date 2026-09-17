@@ -13,7 +13,6 @@ def test_login_wrong_password():
                "password": "WrongPassword123!"
           }
      )
-     
      assert response.status_code == 401
      
 def test_login_success():
@@ -24,10 +23,17 @@ def test_login_success():
                "password": "TestPassword123!"
           }
      )
-     
      assert response.status_code == 200
-     
      json_data = response.json()
-     
      assert "access_token" in json_data
      assert json_data["token_type"] == "bearer"
+     
+def test_login_user_not_found():
+     response = client.post(
+          "/auth/login",
+          data={
+               "username": "doesnotexist@test.com",
+               "password": "TestPassword123!"
+          }
+     )
+     assert response.status_code == 401

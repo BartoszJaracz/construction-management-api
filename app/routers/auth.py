@@ -5,6 +5,7 @@ from sqlalchemy import text
 from app.database import get_db
 from app.schemas.user import TokenResponse
 from app.security import verify_password, create_access_token
+from app.schemas.exceptions import database_error
 import logging
 
 logger = logging.getLogger(__name__)
@@ -62,10 +63,7 @@ def user_login(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Login failed"
-          )
+          database_error("Login failed")
           
      access_token = create_access_token(
           data={

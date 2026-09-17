@@ -60,3 +60,10 @@ def latest_calculation_not_found(element_id: int):
         status_code=status.HTTP_404_NOT_FOUND,
         detail=f"Latest calculation for element with ID {element_id} not found"
     )
+    
+#database error handler
+def database_error(detail: str):
+     raise HTTPException(
+          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+          detail=detail
+     )

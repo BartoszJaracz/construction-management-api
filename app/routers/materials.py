@@ -12,7 +12,8 @@ from app.schemas.material import(
      )
 from app.schemas.exceptions import(
           material_not_found,
-          material_usage_not_found
+          material_usage_not_found,
+          database_error
      )
 from app.schemas.common import MessageResponse
 from decimal import Decimal
@@ -118,11 +119,8 @@ def add_material_usage(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot add material usage"
-          )
-     
+          database_error("Cannot add material usage")
+               
      return MaterialUsageMessageResponse(
           MaterialUsageId=material_usage_id,
           message="Material usage added successfully"
@@ -151,10 +149,7 @@ def delete_material_usage(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot delete MaterialUsage with ID {material_usage_id}"
-          )    
+          database_error(f"Cannot delete MaterialUsage with ID {material_usage_id}")
           
      if result.rowcount == 0:
           material_usage_not_found(material_usage_id)      
@@ -188,11 +183,10 @@ def update_material_usage_quantity(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot update material usage quantity with ID {material_usage_id}"
+          database_error(
+               f"Cannot update material usage quantity with ID {material_usage_id}"
           )
-          
+                
      if result.rowcount==0:
           material_usage_not_found(material_usage_id)
 
@@ -236,7 +230,4 @@ def get_top_material_per_project(
 #error handle in python
      except DBAPIError:
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot retrieve top materials"
-          )
+          database_error("Cannot retrieve top materials")

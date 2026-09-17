@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text
 from app.database import get_db
 from app.schemas.element import (
@@ -9,8 +10,14 @@ from app.schemas.element import (
           ElementMessageResponse
      )
 from app.schemas.calculation import CalculationResponse
-from app.schemas.exceptions import element_not_found, latest_calculation_not_found
+from app.schemas.exceptions import (
+          element_not_found,
+          latest_calculation_not_found,
+          project_not_found,
+          database_error
+     )
 from app.schemas.common import MessageResponse
+from app.dependencies import get_current_user, require_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -122,6 +129,7 @@ def get_latest_calculation(
 )
 def create_element(
      element: ElementCreate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> ElementMessageResponse:
      try:
@@ -139,13 +147,17 @@ def create_element(
           element_id = result.scalar()
           db.commit()
           
+     except ProgrammingError as e:
+          db.rollback()
+          if "50001" in str(e):
+               project_not_found(element.ProjectId)
+          logger.exception("Database error")
+          database_error("Cannot create new element")
+     
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot create new element"
-          )
+          database_error("Cannot create new element")
           
      return ElementMessageResponse(
           ElementId=element_id,
@@ -159,6 +171,7 @@ def create_element(
 )
 def delete_element(
      element_id: int,
+     current_user = Depends(require_admin),
      db: Session = Depends(get_db)
 ) -> None:
      try:
@@ -193,6 +206,7 @@ def delete_element(
 def update_element_dimensions(
      element_id: int,
      new_dimensions: str,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:

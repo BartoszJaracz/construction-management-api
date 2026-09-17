@@ -10,6 +10,7 @@ from app.schemas.user import(
 from app.schemas.common import MessageResponse
 from app.security import get_password_hash
 from app.dependencies import require_admin
+from app.schemas.exceptions import database_error
 import logging
 
 logger = logging.getLogger(__name__)
@@ -90,9 +91,8 @@ def assign_user_to_project(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail=f"Cannot assign user with id {user_id} to project with id {project_id}"
+          database_error(
+               f"Cannot assign user with id {user_id} to project with id {project_id}"
           )
      
      return MessageResponse(
@@ -163,12 +163,7 @@ def register(
      except Exception:
           db.rollback()
           logger.exception("Database error")
-          
-          raise HTTPException(
-               status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-               detail="Cannot register user"
-          )
-     
+          database_error("Cannot register user")
      
      return MessageResponse(
           message=f"User with email: {user_data.email} registered successfully."
