@@ -1,15 +1,23 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy import text
 from app.database import get_db
-from app.schemas.calculation import CalculationResponse, CalculationCreate
+from app.schemas.calculation import(
+          CalculationResponse,
+          CalculationCreate,
+          CalculationMessageResponse,
+          CalculationNonNegativeUpdate,
+          CalculationPositiveUpdate
+     )
 from app.schemas.common import MessageResponse
 from app.schemas.exceptions import(
           calculation_not_found,
           calculation_update_exception,
-          database_error
+          database_error,
+          element_not_found
      )
-from decimal import Decimal
+from app.dependencies import get_current_user, require_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -69,15 +77,16 @@ def get_calculation(
 #add calculation
 @router.post(
      "",
-     response_model=MessageResponse,
+     response_model=CalculationMessageResponse,
      status_code=status.HTTP_201_CREATED
 )
 def create_calculation(
      calculation: CalculationCreate,
+     current_user = Depends(get_current_user),
      db: Session= Depends(get_db)
-) -> MessageResponse:
+) -> CalculationMessageResponse:
      try:
-          db.execute(
+          result = db.execute(
                text("""
                     EXEC sp_AddCalculations
                     @ElementId = :ElementId,
@@ -88,15 +97,23 @@ def create_calculation(
                """),
                calculation.model_dump()
           )
-          
+          calculation_id = result.scalar()
           db.commit()
+          
+     except ProgrammingError as e:
+          db.rollback()
+          if "50001" in str(e):
+               element_not_found(calculation.ElementId)
+          logger.exception("Database error")
+          database_error("Cannot create new calculation")
           
      except Exception:
           db.rollback()
           logger.exception("Database error")
           database_error("Cannot create new calculation")
                     
-     return MessageResponse(
+     return CalculationMessageResponse(
+          CalculationId=calculation_id,
           message="Calculation created successfully"
      )
      
@@ -107,6 +124,7 @@ def create_calculation(
 )
 def delete_calculation(
      calculation_id: int,
+     current_user = Depends(require_admin),
      db: Session= Depends(get_db)
 ) -> None:
      try:
@@ -137,7 +155,8 @@ def delete_calculation(
 )
 def update_bending_moment(
      calculation_id: int,
-     bending_moment: Decimal,
+     bending_moment: CalculationNonNegativeUpdate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -149,22 +168,27 @@ def update_bending_moment(
                """),
                {
                     "calculation_id": calculation_id,
-                    "bending_moment": bending_moment
+                    "bending_moment": bending_moment.value
                }
           )
           
           db.commit()     
           
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while updating bending moment")
+          calculation_update_exception(calculation_id)
+          
      except Exception:
           db.rollback()
-          logger.exception("Database error")
+          logger.exception("Database error while updating bending moment")
           calculation_update_exception(calculation_id)
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
           
      return MessageResponse(
-          message=f"Calculation with ID {calculation_id} successfully updated bending moment to {bending_moment}"
+          message=f"Calculation with ID {calculation_id} successfully updated bending moment to {bending_moment.value}"
      )
      
 #update axial force
@@ -175,7 +199,8 @@ def update_bending_moment(
 )
 def update_axial_force(
      calculation_id: int,
-     axial_force: Decimal,
+     axial_force: CalculationNonNegativeUpdate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -187,22 +212,27 @@ def update_axial_force(
                """),
                {
                     "calculation_id": calculation_id,
-                    "axial_force": axial_force
+                    "axial_force": axial_force.value
                }
           )
                
           db.commit()
           
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while updating axial force")
+          calculation_update_exception(calculation_id)
+               
      except Exception:
           db.rollback()
-          logger.exception("Database error")
+          logger.exception("Database error while updating axial force")
           calculation_update_exception(calculation_id)
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
           
      return MessageResponse(
-          message=f"Calculation with ID {calculation_id} successfully updated axial force to {axial_force}"
+          message=f"Calculation with ID {calculation_id} successfully updated axial force to {axial_force.value}"
      )
      
 #update load value
@@ -213,7 +243,8 @@ def update_axial_force(
 )
 def update_load_value(
      calculation_id: int,
-     load_value: Decimal,
+     load_value: CalculationNonNegativeUpdate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -225,22 +256,27 @@ def update_load_value(
                """),
                {
                     "calculation_id": calculation_id,
-                    "load_value": load_value
+                    "load_value": load_value.value
                }
           )
                
           db.commit()
      
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while updating load value")
+          calculation_update_exception(calculation_id)
+               
      except Exception:
           db.rollback()
-          logger.exception("Database error")
+          logger.exception("Database error while updating load value")
           calculation_update_exception(calculation_id)
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
           
      return MessageResponse(
-          message=f"Calculation with ID {calculation_id} successfully updated load value to {load_value}"
+          message=f"Calculation with ID {calculation_id} successfully updated load value to {load_value.value}"
      )
      
 #update load capacity factor
@@ -251,7 +287,8 @@ def update_load_value(
 )
 def update_load_capacity_factor(
      calculation_id: int,
-     load_capacity_factor: Decimal,
+     load_capacity_factor: CalculationPositiveUpdate,
+     current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -263,20 +300,25 @@ def update_load_capacity_factor(
                """),
                {
                     "calculation_id": calculation_id,
-                    "load_capacity_factor": load_capacity_factor
+                    "load_capacity_factor": load_capacity_factor.value
                }
           )
             
           db.commit()
           
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while updating load capacity factor")
+          calculation_update_exception(calculation_id)
+               
      except Exception:
           db.rollback()
-          logger.exception("Database error")
+          logger.exception("Database error while updating load capacity factor")
           calculation_update_exception(calculation_id)
           
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
      
      return MessageResponse(
-          message=f"Calculation with ID {calculation_id} successfully updated load capacity factor to {load_capacity_factor}"
+          message=f"Calculation with ID {calculation_id} successfully updated load capacity factor to {load_capacity_factor.value}"
      )

@@ -243,3 +243,47 @@ def regular_user(db):
                {"user_id": user_id}
           )
           db.commit()
+          
+@pytest.fixture
+def calculation(element, db):
+     params = {
+          "ElementId": element,
+          "BendingMoment": 100.00,
+          "AxialForce": 50.00,
+          "LoadValue": 80.00,
+          "LoadCapacityFactor": 0.80
+     }
+     db.execute(
+          text("""
+               EXEC sp_AddCalculations
+               @ElementId = :ElementId,
+               @BendingMoment = :BendingMoment,
+               @AxialForce = :AxialForce,
+               @LoadValue = :LoadValue,
+               @LoadCapacityFactor = :LoadCapacityFactor
+          """),
+          params
+     )
+     result = db.execute(
+          text("""
+               SELECT TOP 1 CalculationId
+               FROM Calculation
+               WHERE ElementId = :element_id
+               ORDER BY CalculationId DESC     
+          """),
+          {"element_id": element}
+     )
+     calculation_id = result.scalar()
+     db.commit()
+     
+     try:
+          yield element, calculation_id
+     finally:
+          db.execute(
+               text("""
+                    DELETE FROM Calculation
+                    WHERE ElementId = :element     
+               """),
+               {"element": element}
+          )
+          db.commit()

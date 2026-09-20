@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from sqlalchemy import text
 from app.security import create_access_token
+from decimal import Decimal
 
 client = TestClient(app)
 
@@ -38,6 +39,51 @@ def test_get_elements_without_calculations(element):
      assert isinstance(json_data, list)
      element_id_list = [item["ElementId"] for item in json_data]
      assert element_id in element_id_list
+          
+def test_get_latest_calculation_success(calculation, db):
+     element_id, calculation_id = calculation
+     response = client.get(
+          f"/elements/{element_id}/calculations/latest"
+     )
+     assert response.status_code == 200
+     result = db.execute(
+          text("""
+               SELECT
+                    CalculationId,
+                    ElementId,
+                    BendingMoment,
+                    AxialForce,
+                    LoadValue,
+                    LoadCapacityFactor
+               FROM Calculation
+               WHERE ElementId = :element_id;
+          """),
+          {"element_id": element_id}
+     )
+     row = result.fetchone()
+     assert(
+          row.CalculationId == calculation_id
+          and row.ElementId == element_id
+          and row.BendingMoment == Decimal("100.00")
+          and row.AxialForce == Decimal("50.00")
+          and row.LoadValue == Decimal("80.00")
+          and row.LoadCapacityFactor == Decimal("0.80")
+     )
+     
+def test_get_latest_calculation_not_found(element):
+     element_id = element
+     response = client.get(
+          f"/elements/{element_id}/calculations/latest"
+     )
+     assert response.status_code == 404
+     json_data = response.json()
+     assert "not found" in json_data["detail"]
+     
+def test_get_latest_element_not_found():
+     response = client.get(
+          "/elements/9999999/calculations/latest"
+     )
+     assert response.status_code == 404
           
 def test_create_element_success(regular_user, db):
      token = create_access_token(

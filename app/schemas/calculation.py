@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
@@ -18,5 +18,15 @@ class CalculationCreate(BaseModel):
      AxialForce: Decimal
      LoadValue: Decimal
      LoadCapacityFactor: Decimal
+     
+class CalculationMessageResponse(BaseModel):
+     CalculationId: int
+     message: str
+     
+class CalculationNonNegativeUpdate(BaseModel):
+     value: Decimal = Field(ge=0)
+     
+class CalculationPositiveUpdate(BaseModel):
+     value: Decimal = Field(gt=0)
      
      
