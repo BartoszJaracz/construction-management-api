@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Path
+from fastapi import APIRouter, Depends, status, Path
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import DBAPIError
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from app.database import get_db
 from app.schemas.material import(
           MaterialResponse,
           MaterialUsageResponse,
           TopMaterialPerProjectResponse,
           MaterialUsageAdd,
-          MaterialUsageMessageResponse
+          MaterialUsageMessageResponse,
+          MaterialUsageQuantityUpdate
      )
 from app.schemas.exceptions import(
           material_not_found,
@@ -16,7 +17,7 @@ from app.schemas.exceptions import(
           database_error
      )
 from app.schemas.common import MessageResponse
-from decimal import Decimal
+from app.dependencies import get_current_user, require_admin
 import logging
 
 logger = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ def add_material_usage(
      element_id: int,
      material_id: int,
      material_usage: MaterialUsageAdd,
+     current_user = Depends(get_current_user),
      db: Session= Depends(get_db)
 ) -> MaterialUsageMessageResponse:
      try:
@@ -116,6 +118,12 @@ def add_material_usage(
           material_usage_id = result.scalar()
           db.commit()
           
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while adding material usage")
+          database_error(
+               f"Cannot add material usage"
+          )  
      except Exception:
           db.rollback()
           logger.exception("Database error")
@@ -133,6 +141,7 @@ def add_material_usage(
 )
 def delete_material_usage(
      material_usage_id: int,
+     current_user = Depends(require_admin),
      db: Session= Depends(get_db)
 ) -> None:
      try:
@@ -156,13 +165,14 @@ def delete_material_usage(
 
 #update MaterialUsage by ElementId & Quantity
 @router.put(
-     "/usage/{material_usage_id}/{new_quantity}",
+     "/usage/{material_usage_id}",
      response_model= MessageResponse,
      status_code=status.HTTP_200_OK
 )
 def update_material_usage_quantity(
      material_usage_id: int,
-     new_quantity: Decimal,
+     new_quantity: MaterialUsageQuantityUpdate,
+     current_user = Depends(get_current_user),
      db: Session= Depends(get_db)
 ) -> MessageResponse:
      try:
@@ -174,12 +184,19 @@ def update_material_usage_quantity(
                """),
                {
                     "material_usage_id": material_usage_id,
-                    "new_quantity": new_quantity
+                    "new_quantity": new_quantity.quantity
                }
           )
           
           db.commit()
-          
+     
+     except IntegrityError:
+          db.rollback()
+          logger.exception("Integrity error while updating material usage quantity")
+          database_error(
+               f"Cannot update material usage quantity with ID {material_usage_id}"
+          )
+               
      except Exception:
           db.rollback()
           logger.exception("Database error")
@@ -191,7 +208,7 @@ def update_material_usage_quantity(
           material_usage_not_found(material_usage_id)
 
      return MessageResponse(
-          message=f"Quantity {new_quantity} set to element with ID {material_usage_id}"
+          message=f"Quantity {new_quantity.quantity} set to element with ID {material_usage_id}"
      )
 
 #get top material per project
@@ -219,9 +236,6 @@ def get_top_material_per_project(
           )
           
           rows = result.fetchall()
-          
-          # if not rows:
-          #      project_not_found(project_id)
           
           return [
                TopMaterialPerProjectResponse(**row._mapping) for row in rows

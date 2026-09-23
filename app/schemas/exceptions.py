@@ -23,13 +23,6 @@ def calculation_not_found(calculation_id: int):
           status_code=status.HTTP_404_NOT_FOUND,
           detail=f"Calculation with ID {calculation_id} not found"
      )
-
-#calculation update exception
-def calculation_update_exception(calculation_id: int):
-     raise HTTPException(
-          status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-          detail=f"Cannot update calculation with ID {calculation_id}"
-     )
      
 #material not found exception
 def material_not_found(material_id: int):

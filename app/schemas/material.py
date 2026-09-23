@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from decimal import Decimal
 from datetime import datetime
@@ -30,3 +30,6 @@ class MaterialUsageAdd(BaseModel):
 class MaterialUsageMessageResponse(BaseModel):
      MaterialUsageId: int
      message: str
+
+class MaterialUsageQuantityUpdate(BaseModel):
+     quantity: Decimal = Field(gt=0)

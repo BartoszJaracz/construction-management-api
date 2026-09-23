@@ -13,7 +13,6 @@ from app.schemas.calculation import(
 from app.schemas.common import MessageResponse
 from app.schemas.exceptions import(
           calculation_not_found,
-          calculation_update_exception,
           database_error,
           element_not_found
      )
@@ -177,12 +176,16 @@ def update_bending_moment(
      except IntegrityError:
           db.rollback()
           logger.exception("Integrity error while updating bending moment")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
           
      except Exception:
           db.rollback()
           logger.exception("Database error while updating bending moment")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
@@ -221,12 +224,16 @@ def update_axial_force(
      except IntegrityError:
           db.rollback()
           logger.exception("Integrity error while updating axial force")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
                
      except Exception:
           db.rollback()
           logger.exception("Database error while updating axial force")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
@@ -265,12 +272,16 @@ def update_load_value(
      except IntegrityError:
           db.rollback()
           logger.exception("Integrity error while updating load value")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
                
      except Exception:
           db.rollback()
           logger.exception("Database error while updating load value")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
      
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
@@ -309,12 +320,16 @@ def update_load_capacity_factor(
      except IntegrityError:
           db.rollback()
           logger.exception("Integrity error while updating load capacity factor")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
                
      except Exception:
           db.rollback()
           logger.exception("Database error while updating load capacity factor")
-          calculation_update_exception(calculation_id)
+          database_error(
+               f"Cannot update calculation with ID {calculation_id}"
+          )
           
      if result.rowcount == 0:
           calculation_not_found(calculation_id)
