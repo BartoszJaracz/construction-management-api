@@ -1,6 +1,7 @@
 import pytest
 from app.database import SessionLocal, get_db
 from app.main import app
+from app.security import get_password_hash
 from sqlalchemy import text
 from datetime import date
 
@@ -287,7 +288,7 @@ def admin_user(db):
      params = {
           "FirstName": "Test",
           "LastName": "Test",
-          "Email": "test123@test.com",
+          "Email": "test321@test.com",
           "Role": "ADMIN",
           "IsActive": 1,
           "PasswordHash": "test123"
@@ -381,7 +382,59 @@ def regular_user(db):
                {"user_id": user_id}
           )
           db.commit()
-          
+
+@pytest.fixture
+def login_user(db):
+     password = "TestPassword1234!"
+     hashed_password = get_password_hash(password=password)
+     params = {
+          "FirstName": "Test",
+          "LastName": "Test",
+          "Email": "login_test@test.com",
+          "Role": "ASYSTENT",
+          "IsActive": 1,
+          "PasswordHash": hashed_password
+     }
+     result = db.execute(
+          text("""
+               INSERT INTO [User]
+               (
+                    FirstName,
+                    LastName,
+                    Email,
+                    Role,
+                    IsActive,
+                    CreatedAt,
+                    PasswordHash
+               )
+               OUTPUT INSERTED.UserId, INSERTED.Email
+               VALUES
+               (
+                    :FirstName,
+                    :LastName,
+                    :Email,
+                    :Role,
+                    :IsActive,
+                    GETDATE(),
+                    :PasswordHash
+               )
+          """),
+          params
+     )
+     user_id, email = result.fetchone()
+     db.commit()
+     try:
+          yield user_id, email, password
+     finally:
+          db.execute(
+               text("""
+                    DELETE FROM [User]
+                    WHERE UserId = :user_id;     
+               """),
+               {"user_id": user_id}
+          )
+          db.commit()
+     
 @pytest.fixture
 def calculation(element, db):
      params = {
