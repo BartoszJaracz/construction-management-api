@@ -271,7 +271,21 @@ def test_update_axial_force_success(calculation, regular_user, db):
      )
      axial_force = result.scalar()
      assert axial_force == Decimal("100.00")
-     
+
+def test_update_axial_force_negative_value(calculation, regular_user):
+     _, calculation_id = calculation
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     response = client.put(
+          f"/calculations/{calculation_id}/axial_force",
+          json={
+               "value": -100.00
+          },
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 422
+
 def test_update_load_value_success(calculation, regular_user, db):
      _, calculation_id = calculation
      token = create_access_token(
@@ -294,6 +308,20 @@ def test_update_load_value_success(calculation, regular_user, db):
      )
      load_value = result.scalar()
      assert load_value == Decimal("150.00")
+     
+def test_update_load_value_negative_value(calculation, regular_user):
+     _, calculation_id = calculation
+     token = create_access_token(
+          data={"sub": str(regular_user)}
+     )
+     response = client.put(
+          f"/calculations/{calculation_id}/load_value",
+          json={
+               "value": -150.00
+          },
+          headers={"Authorization": f"Bearer {token}"}
+     )
+     assert response.status_code == 422
      
 def test_update_load_capacity_factor_success(calculation, regular_user, db):
      _, calculation_id = calculation

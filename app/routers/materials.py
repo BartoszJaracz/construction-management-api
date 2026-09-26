@@ -14,6 +14,7 @@ from app.schemas.material import(
 from app.schemas.exceptions import(
           material_not_found,
           material_usage_not_found,
+          project_not_found,
           database_error
      )
 from app.schemas.common import MessageResponse
@@ -242,6 +243,9 @@ def get_top_material_per_project(
           ]
           
 #error handle in python
-     except DBAPIError:
+     except DBAPIError as e:
+          db.rollback()
+          if "50001" in str(e):
+               project_not_found(project_id)
           logger.exception("Database error")
           database_error("Cannot retrieve top materials")

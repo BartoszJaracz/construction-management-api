@@ -11,7 +11,6 @@ def test_get_elements():
      response = client.get("/elements")
      assert response.status_code == 200
      json_data = response.json()
-
      assert isinstance(json_data, list)
      if json_data:
           assert "ElementId" in json_data[0]
@@ -46,6 +45,9 @@ def test_get_latest_calculation_success(calculation, db):
           f"/elements/{element_id}/calculations/latest"
      )
      assert response.status_code == 200
+     json_data = response.json()
+     assert json_data["CalculationId"] == calculation_id
+     assert json_data["ElementId"] == element_id
      result = db.execute(
           text("""
                SELECT
@@ -85,15 +87,17 @@ def test_get_latest_element_not_found():
      )
      assert response.status_code == 404
           
-def test_create_element_success(regular_user, db):
+def test_create_element_success(regular_user, project, element_type, db):
+     project_id = project
+     element_type_id = element_type
      token = create_access_token(
           data={"sub": str(regular_user)}
      )
      response = client.post(
           "/elements",
           json={
-               "ProjectId": 1,
-               "ElementTypeId": 1,
+               "ProjectId": project_id,
+               "ElementTypeId": element_type_id,
                "Name": "Test element",
                "Dimensions": "100x100",
                "TechnicalParameters": "Test parameters"
@@ -106,7 +110,6 @@ def test_create_element_success(regular_user, db):
      assert "ElementId" in json_data
      assert "successfully" in json_data["message"]
      element_id = json_data["ElementId"]
-     
      try:
           result = db.execute(
                text("""
@@ -117,7 +120,6 @@ def test_create_element_success(regular_user, db):
           )
           test_name = result.scalar()
           assert test_name == "Test element"
-          
      finally:
           db.execute(
                text("""
@@ -128,7 +130,8 @@ def test_create_element_success(regular_user, db):
           )
           db.commit()
      
-def test_create_element_project_not_found(regular_user):
+def test_create_element_project_not_found(regular_user, element_type):
+     element_type_id = element_type
      token = create_access_token(
           data={"sub": str(regular_user)}
      )
@@ -136,7 +139,7 @@ def test_create_element_project_not_found(regular_user):
           "/elements",
           json={
                "ProjectId": 99999999,
-               "ElementTypeId": 1,
+               "ElementTypeId": element_type_id,
                "Name": "Test Element",
                "Dimensions": "100x100mm",
                "TechnicalParameters": "Test Parameters"
@@ -147,12 +150,14 @@ def test_create_element_project_not_found(regular_user):
      json_data = response.json()
      assert "not found" in json_data["detail"]
      
-def test_create_element_without_authentication():
+def test_create_element_without_authentication(project, element_type):
+     project_id = project
+     element_type_id = element_type
      response = client.post(
           "/elements",
           json={
-               "ProjectId": 1,
-               "ElementTypeId": 1,
+               "ProjectId": project_id,
+               "ElementTypeId": element_type_id,
                "Name": "Test element",
                "Dimensions": "100x100",
                "TechnicalParameters": "Test parameters"
@@ -160,15 +165,17 @@ def test_create_element_without_authentication():
      )
      assert response.status_code == 401
      
-def test_create_element_invalid_token():
+def test_create_element_invalid_token(project, element_type):
+     project_id = project
+     element_type_id = element_type
      token = create_access_token(
           data={"sub": "99999999"}
      )
      response = client.post(
           "/elements",
           json={
-               "ProjectId": 1,
-               "ElementTypeId": 1,
+               "ProjectId": project_id,
+               "ElementTypeId": element_type_id,
                "Name": "Test element",
                "Dimensions": "100x100",
                "TechnicalParameters": "Test parameters"

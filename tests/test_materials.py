@@ -56,6 +56,11 @@ def test_get_top_materials_invalid_top_n(project):
      response = client.get(f"/materials/top/{project_id}/{top_n}")
      assert response.status_code == 422
      
+def test_get_top_materials_project_not_found():
+     top_n = "5"
+     response = client.get(f"/materials/top/999999999/{top_n}")
+     assert response.status_code == 404
+     
 def test_add_material_usage_success(element, material_unit, regular_user, db):
      material_id, unit_id = material_unit
      element_id = element

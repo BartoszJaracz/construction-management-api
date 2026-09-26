@@ -5,10 +5,20 @@ from sqlalchemy import text
 
 client = TestClient(app)
 
+
+
+def test_get_projects_success():
+     response = client.get("/projects")
+     assert response.status_code == 200
+     json_data = response.json()
+     assert isinstance(json_data, list)
+     assert json_data
+     first_element = json_data[0]
+     assert "ProjectId" in first_element
+
 def test_get_project_success(project):
      project_id = project
      response = client.get(f"/projects/{project_id}")
-     
      assert response.status_code == 200
      json_data = response.json()
      assert "ProjectId" in json_data
@@ -16,6 +26,28 @@ def test_get_project_success(project):
      
 def test_get_project_not_found():
      response = client.get("/projects/99999")
+     assert response.status_code == 404
+     
+def test_get_project_dashboard_success(project):
+     project_id = project
+     response = client.get(f"/projects/{project_id}/dashboard")
+     assert response.status_code == 200
+     json_data = response.json()
+     assert project_id == json_data["ProjectId"]
+     
+def test_get_project_dashboard_not_found():
+     response = client.get("/projects/999999999/dashboard")
+     assert response.status_code == 404
+
+def test_get_project_bottleneck_success(project):
+     project_id = project
+     response = client.get(f"/projects/{project_id}/bottleneck")
+     assert response.status_code == 200
+     json_data = response.json()
+     assert project_id == json_data["ProjectId"]
+     
+def test_get_project_bottleneck_not_found():
+     response = client.get("/projects/999999999/bottleneck")
      assert response.status_code == 404
      
 def test_create_project_invalid_data(regular_user):
@@ -200,9 +232,9 @@ def test_delete_project_without_authentication():
      response = client.delete("/projects/1")
      assert response.status_code == 401
      
-def test_delete_project_without_admin_role():
+def test_delete_project_without_admin_role(regular_user):
      token = create_access_token(
-          data={"sub": "1004"}
+          data={"sub": str(regular_user)}
      )
      response = client.delete(
           "/projects/1",
