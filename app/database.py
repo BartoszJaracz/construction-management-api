@@ -1,12 +1,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.config import DB_SERVER, DB_NAME, DB_DRIVER
-
+from app.config import (
+    DB_SERVER,
+    DB_NAME,
+    DB_USER,
+    DB_PASSWORD,
+    DB_DRIVER
+)
 
 connection_string = (
-    f"mssql+pyodbc://@{DB_SERVER}/{DB_NAME}"
+    f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{DB_NAME}"
     f"?driver={DB_DRIVER.replace(' ', '+')}"
-    "&trusted_connection=yes"
 )
 
 engine = create_engine(connection_string)

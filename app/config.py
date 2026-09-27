@@ -11,6 +11,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(
 
 DB_SERVER = getenv("DB_SERVER")
 DB_NAME = getenv("DB_NAME")
+DB_USER = getenv("DB_USER")
+DB_PASSWORD = getenv("DB_PASSWORD")
 DB_DRIVER = getenv(
     "DB_DRIVER",
     "ODBC Driver 17 for SQL Server"
@@ -24,3 +26,9 @@ if not DB_SERVER:
 
 if not DB_NAME:
     raise RuntimeError("DB_NAME is not configured")
+
+if not DB_USER:
+    raise RuntimeError("DB_USER is not configured")
+
+if not DB_PASSWORD:
+    raise RuntimeError("DB_PASSWORD is not configured")

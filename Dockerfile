@@ -6,7 +6,15 @@ RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
     unixodbc \
-    unixodbc-dev
+    unixodbc-dev \
+    curl \
+    gnupg \
+    && curl -sSL -O https://packages.microsoft.com/config/debian/13/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
 
