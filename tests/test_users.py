@@ -101,7 +101,7 @@ def test_register_user_success(db):
      )
      new_user = result.fetchone()
      assert new_user is not None
-     assert new_user["Role"] == "ASYSTENT"
+     assert new_user["Role"] == "ASSISTANT"
      assert new_user["IsActive"] == 1
      assert new_user["PasswordHash"] != password
      db.execute(

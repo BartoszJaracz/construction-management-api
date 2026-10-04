@@ -1,23 +1,17 @@
 venv/
+.venv/
+env/
 __pycache__/
+*.py[cod]
+
 .vscode/
-
-.env
-
-*.pyc
-*.pyo
-*.pyd
+.idea/
 
 .pytest_cache/
 
-.idea/
+.env
 
 *.db
+*.bak
 
 .DS_Store
-
-__pycache__/
-*.pyc
-
-*.py[cod]
-.venv/

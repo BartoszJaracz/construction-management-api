@@ -90,7 +90,7 @@ def test_create_project_success(regular_user, db):
                "ProjectName": "Test Project",
                "Scope": "Test Scope",
                "Location": "Test Location",
-               "Status": "Nowy",
+               "Status": "New",
                "DueDate": "2030-09-30"
           },
           headers={
@@ -131,7 +131,7 @@ def test_create_project_without_authentication():
                "ProjectName": "Test Project",
                "Scope": "Test Scope",
                "Location": "Test Location",
-               "Status": "Nowy",
+               "Status": "New",
                "DueDate": "2030-09-30"
           }
      )
@@ -147,7 +147,7 @@ def test_create_project_invalid_token():
                "ProjectName": "Test Project",
                "Scope": "Test Scope",
                "Location": "Test Location",
-               "Status": "Nowy",
+               "Status": "New",
                "DueDate": "2030-09-30"
           },
           headers={"Authorization": f"Bearer {token}"}
@@ -162,7 +162,7 @@ def test_update_status_success(regular_user, project, db):
      response = client.put(
           f"/projects/{project_id}/status",
           json={
-               "new_status": "Zakonczony"
+               "new_status": "Completed"
           },
           headers={
                "Authorization": f"Bearer {token}"
@@ -177,14 +177,14 @@ def test_update_status_success(regular_user, project, db):
           {"project_id": project_id}
      )
      status = result.scalar()
-     assert status == "Zakonczony"
+     assert status == "Completed"
      
 def test_update_status_without_authentication(project):
      project_id = project
      response = client.put(
           f"/projects/{project_id}/status",
           json={
-               "new_status": "Zakonczony"
+               "new_status": "Completed"
           }
      )
      assert response.status_code == 401
@@ -196,7 +196,7 @@ def test_update_status_not_found(regular_user):
      response = client.put(
           "/projects/99999999/status",
           json={
-               "new_status": "Zakonczony"
+               "new_status": "Completed"
           },
           headers={"Authorization": f"Bearer {token}"}
      )

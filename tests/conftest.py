@@ -26,7 +26,7 @@ def project(db):
           "ProjectName": "Test Name",
           "Scope": "Test Scope",
           "Location": "Test Location",
-          "Status": "Nowy",
+          "Status": "New",
           "DueDate": date(2030, 9, 30)
      }
      result = db.execute(
@@ -339,7 +339,7 @@ def regular_user(db):
           "FirstName": "Test",
           "LastName": "Test",
           "Email": "test123@test.com",
-          "Role": "ASYSTENT",
+          "Role": "ASSISTANT",
           "IsActive": 1,
           "PasswordHash": "test123"
      }
@@ -391,7 +391,7 @@ def login_user(db):
           "FirstName": "Test",
           "LastName": "Test",
           "Email": "login_test@test.com",
-          "Role": "ASYSTENT",
+          "Role": "ASSISTANT",
           "IsActive": 1,
           "PasswordHash": hashed_password
      }

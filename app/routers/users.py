@@ -149,7 +149,7 @@ def register(
                     :FirstName,
                     :LastName,
                     :Email,
-                    'ASYSTENT',
+                    'ASSISTANT',
                     1,
                     GETDATE(),
                     :PasswordHash

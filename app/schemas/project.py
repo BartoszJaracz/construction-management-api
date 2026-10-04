@@ -11,10 +11,10 @@ class ProjectCreate(BaseModel):
      DueDate: date
      
 class ProjectStatus(str, Enum):
-     NOWY = "Nowy"
-     W_TRAKCIE = "W trakcie"
-     ZAKONCZONY  = "Zakonczony"
-     WSTRZYMANY = "Wstrzymany"
+     NEW = "New"
+     IN_PROGRESS = "In Progress"
+     COMPLETED = "Completed"
+     ON_HOLD = "On Hold"
      
 class ProjectStatusUpdate(BaseModel):
     new_status: ProjectStatus
