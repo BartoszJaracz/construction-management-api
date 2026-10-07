@@ -1,0 +1,156 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    env:
+      DB_SERVER: localhost,1433
+      DB_NAME: project_management_ci
+      DB_USER: construction_api
+      DB_PASSWORD: ConstructionApi123!
+      DB_DRIVER: ODBC Driver 17 for SQL Server
+      TEST_DB_NAME: project_management_ci
+      SECRET_KEY: ci-test-secret-key
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+
+      SA_PASSWORD: StrongSaPassword123!
+
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+          - 1433:1433
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: StrongSaPassword123!
+          MSSQL_PID: Express
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ODBC Driver 17
+        run: |
+          curl -sSL -O https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb
+          sudo dpkg -i packages-microsoft-prod.deb
+          rm packages-microsoft-prod.deb
+
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql17
+          sudo ACCEPT_EULA=Y apt-get install -y mssql-tools
+          sudo apt-get install -y unixodbc-dev
+
+          echo "/opt/mssql-tools/bin" >> $GITHUB_PATH
+
+      - name: Wait for SQL Server
+        run: |
+          echo "Waiting for SQL Server..."
+
+          for i in {1..60}; do
+            if sqlcmd \
+              -S localhost,1433 \
+              -U sa \
+              -P "$SA_PASSWORD" \
+              -C \
+              -Q "SELECT 1" > /dev/null 2>&1
+            then
+              echo "SQL Server is ready!"
+              exit 0
+            fi
+
+            echo "SQL Server is not ready yet... attempt $i/60"
+            sleep 2
+          done
+
+          echo "SQL Server did not become ready in time."
+          exit 1
+
+      - name: Create test database
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U sa \
+            -P "$SA_PASSWORD" \
+            -C \
+            -Q "CREATE DATABASE project_management_ci"
+
+      - name: Create test database user
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U sa \
+            -P "$SA_PASSWORD" \
+            -C \
+            -Q "CREATE LOGIN construction_api WITH PASSWORD = 'ConstructionApi123!'"
+
+          sqlcmd \
+            -S localhost,1433 \
+            -U sa \
+            -P "$SA_PASSWORD" \
+            -C \
+            -d project_management_ci \
+            -Q "CREATE USER construction_api FOR LOGIN construction_api; ALTER ROLE db_owner ADD MEMBER construction_api;"
+
+      - name: Create database schema
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U construction_api \
+            -P "ConstructionApi123!" \
+            -C \
+            -d project_management_ci \
+            -i database/schema.sql
+
+      - name: Insert seed data
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U construction_api \
+            -P "ConstructionApi123!" \
+            -C \
+            -d project_management_ci \
+            -i database/seed.sql
+
+      - name: Create views
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U construction_api \
+            -P "ConstructionApi123!" \
+            -C \
+            -d project_management_ci \
+            -i database/views.sql
+
+      - name: Create stored procedures
+        run: |
+          sqlcmd \
+            -S localhost,1433 \
+            -U construction_api \
+            -P "ConstructionApi123!" \
+            -C \
+            -d project_management_ci \
+            -i database/procedures.sql
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: |
+          pytest -v
