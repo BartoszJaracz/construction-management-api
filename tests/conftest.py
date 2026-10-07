@@ -1,14 +1,37 @@
+import os
 import pytest
-from app.database import SessionLocal, get_db
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from app.config import (
+    DB_SERVER,
+    DB_NAME,
+    DB_USER,
+    DB_PASSWORD,
+    DB_DRIVER
+)
+from app.database import get_db
 from app.main import app
 from app.security import get_password_hash
-from sqlalchemy import text
 from datetime import date
 
+TEST_DB_NAME = os.getenv("TEST_DB_NAME", "project_management_ci")
+
+test_connection_string = (
+    f"mssql+pyodbc://{DB_USER}:{DB_PASSWORD}@{DB_SERVER}/{TEST_DB_NAME}"
+    f"?driver={DB_DRIVER.replace(' ', '+')}"
+)
+
+test_engine = create_engine(test_connection_string)
+
+TestSessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=test_engine
+)
 
 @pytest.fixture
 def db():
-     db = SessionLocal()
+     db = TestSessionLocal()
      
      def override_get_db():
           yield db
