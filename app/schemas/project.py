@@ -1,7 +1,8 @@
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
 from enum import Enum
 from typing import Optional
+from decimal import Decimal
 
 class ProjectCreate(BaseModel):
      ProjectName: Optional[str] = None
@@ -34,11 +35,15 @@ class ProjectDashboardResponse(BaseModel):
      Location: Optional[str] = None
      Status: Optional[str] = None
      DueDate: date
+     ScheduleStatus: Optional[str] = None
      ElementsCount: Optional[int] = None
      CalculationsCount: Optional[int] = None
      NotesCount: Optional[int] = None
+     ProgressPct: Optional[Decimal] = None
+     HealthStatus: Optional[str] = None
      TotalMaterialQuantity: Optional[float] = None
-     ScheduleStatus: Optional[str] = None
+     LastActivityDate: Optional[datetime] = None
+     ActivityStatus: str
      
 class ProjectBottleneckResponse(BaseModel):
      ProjectId: int
