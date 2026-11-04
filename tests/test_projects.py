@@ -34,6 +34,10 @@ def test_get_project_dashboard_success(project):
      assert response.status_code == 200
      json_data = response.json()
      assert project_id == json_data["ProjectId"]
+     assert "ProgressPct" in json_data
+     assert "HealthStatus" in json_data
+     assert "LastActivityDate" in json_data
+     assert "ActivityStatus" in json_data
      
 def test_get_project_dashboard_not_found():
      response = client.get("/projects/999999999/dashboard")

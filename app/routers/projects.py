@@ -85,8 +85,8 @@ def get_project_dashboard(
      
      result = db.execute(
           text("""
-               SELECT * FROM vw_ProjectDashboardAdvanced vpda
-               WHERE vpda.ProjectId = :project_id;
+               SELECT * FROM vw_ProjectFullDashboard vpfd
+               WHERE vpfd.ProjectId = :project_id;
           """),
           {"project_id": project_id}
      )
@@ -99,7 +99,6 @@ def get_project_dashboard(
      return ProjectDashboardResponse(
           **row._mapping
      )
-
 
 #get bottlenecks with project_id
 @router.get(
