@@ -16,6 +16,10 @@ from app.schemas.exceptions import (
           project_not_found,
           database_error
      )
+from app.services.project_service import(
+     get_project_dashboard as get_project_dashboard_service,
+     get_project as get_project_service
+     )
 from app.dependencies import require_admin, get_current_user
 import logging
 
@@ -57,21 +61,12 @@ def get_project(
      db: Session = Depends(get_db)
      ) -> ProjectResponse:
      
-        result = db.execute(
-            text("""
-                SELECT *
-                FROM Project
-                WHERE ProjectId = :project_id
-            """),
-            {"project_id": project_id}
-        )
+        result = get_project_service(db, project_id)
 
-        row = result.fetchone()
-        
-        if row is None:
+        if result is None:
           project_not_found(project_id)
           
-        return ProjectResponse(**row._mapping)
+        return ProjectResponse(**result)
 
 #get dashboard with project_id
 @router.get(
@@ -83,22 +78,12 @@ def get_project_dashboard(
      db: Session = Depends(get_db)
      ) -> ProjectDashboardResponse:
      
-     result = db.execute(
-          text("""
-               SELECT * FROM vw_ProjectFullDashboard vpfd
-               WHERE vpfd.ProjectId = :project_id;
-          """),
-          {"project_id": project_id}
-     )
-     
-     row = result.fetchone()
-     
-     if row is None:
+     result = get_project_dashboard_service(db, project_id)
+      
+     if result is None:
           project_not_found(project_id)
      
-     return ProjectDashboardResponse(
-          **row._mapping
-     )
+     return ProjectDashboardResponse(**result)
 
 #get bottlenecks with project_id
 @router.get(
