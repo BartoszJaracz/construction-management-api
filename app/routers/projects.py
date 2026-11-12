@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy import text
@@ -18,7 +18,12 @@ from app.schemas.exceptions import (
      )
 from app.services.project_service import(
      get_project_dashboard as get_project_dashboard_service,
-     get_project as get_project_service
+     get_project as get_project_service,
+     get_projects as get_projects_service,
+     get_project_bottleneck as get_project_bottleneck_service,
+     create_project as create_project_service,
+     delete_project as delete_project_service,
+     update_project_status as update_project_status_service
      )
 from app.dependencies import require_admin, get_current_user
 import logging
@@ -41,15 +46,9 @@ router = APIRouter(
 def get_projects(
      db: Session = Depends(get_db)
      ) -> list[ProjectResponse]:
+     
+     return get_projects_service(db)
 
-        result = db.execute(
-            text("SELECT * FROM Project")
-        )
-
-        return [
-             row._mapping for row in result.all()
-        ]
-   
    
 #get one project with project_id
 @router.get(
@@ -95,22 +94,14 @@ def get_project_bottleneck(
      db: Session = Depends(get_db)
      ) -> ProjectBottleneckResponse:
      
-     result = db.execute(
-          text("""
-               SELECT * FROM vw_ProjectBottlenecks vpb
-               WHERE vpb.ProjectId = :project_id;
-          """),
-          {"project_id": project_id}
-     )
-     row = result.fetchone()
+     result = get_project_bottleneck_service(db, project_id) 
      
-     if row is None:
+     if result is None:
           project_not_found(project_id)
      
      return ProjectBottleneckResponse(
-          **row._mapping
+          **result
      )
-
 
 #create project
 @router.post(
@@ -123,39 +114,15 @@ def create_project(
      current_user = Depends(get_current_user),
      db: Session = Depends(get_db)
 ) -> ProjectMessageResponse:
+     
      try:
-          result = db.execute(
-               text("""
-                    INSERT INTO Project
-                    (
-                         ProjectName,
-                         Scope,
-                         Location,
-                         Status,
-                         DueDate,
-                         CreatedAt
-                    )
-                    OUTPUT INSERTED.ProjectId
-                    VALUES
-                    (
-                         :ProjectName,
-                         :Scope,
-                         :Location,
-                         :Status,
-                         :DueDate,
-                         GETDATE()
-                    )
-               """),
-               project.model_dump()
-          )
-          project_id = result.scalar()
-          db.commit()
+          project_data = project.model_dump(mode="json")
+          project_id = create_project_service(db, project_data)
      
      except Exception:
-          db.rollback()
           logger.exception("Database error")
           database_error(f"Cannot create new project")
-     
+          
      return ProjectMessageResponse(
           ProjectId=project_id,
           message="Project created successfully"
@@ -172,21 +139,13 @@ def delete_project(
      db: Session = Depends(get_db)
 ) -> None:
      try:
-          result = db.execute(
-               text("""
-                    DELETE FROM Project WHERE ProjectId = :project_id;     
-               """),
-               {"project_id": project_id},
-          )
-          
-          db.commit()
+          deleted = delete_project_service(db, project_id)
           
      except Exception:
-          db.rollback()
           logger.exception("Database error")
           database_error(f"Cannot delete project with ID {project_id}")
           
-     if result.rowcount == 0:
+     if deleted == 0:
           project_not_found(project_id)
              
 #update project status
@@ -202,35 +161,25 @@ def update_project_status(
      db: Session = Depends(get_db)
 ) -> MessageResponse:
      try:
-          db.execute(
-               text("""
-                    EXEC sp_UpdateProjectStatus
-                    @ProjectId = :project_id,
-                    @NewStatus = :new_status;
-               """),
-               {
-                    "project_id": project_id,
-                    "new_status": status_update.new_status.value
-               }
+          update_project_status_service(
+               db,
+               project_id,
+               status_update.model_dump(mode="json")
           )
           
-          db.commit()
-          
      except ProgrammingError as e:
-          db.rollback()
           if "50001" in str(e):
                project_not_found(project_id)
           logger.exception("Database error")
           database_error(f"Cannot update project with ID {project_id}")
           
      except Exception:
-          db.rollback()
           logger.exception("Database error")
           database_error(f"Cannot update project with ID {project_id}")
           
      return MessageResponse (
           message=(
-                    f"Status {status_update.new_status} "
+                    f"Status {status_update.new_status.value} "
                     f"set to project with ID {project_id}"
                )
      )
